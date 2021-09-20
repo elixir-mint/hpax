@@ -82,7 +82,14 @@ defmodule HPAX do
   # https://datatracker.ietf.org/doc/html/rfc7541#section-4.2
   def decode(<<0b001::3, rest::bitstring>>, %Table{} = table) do
     {new_size, rest} = decode_integer(rest, 5)
-    decode(rest, Table.resize(table, new_size))
+
+    # Dynamic resizes must be less than max table size
+    # https://datatracker.ietf.org/doc/html/rfc7541#section-6.3
+    if new_size <= table.max_table_size do
+      decode(rest, Table.resize(table, new_size))
+    else
+      {:error, :protocol_error}
+    end
   end
 
   def decode(block, %Table{} = table) when is_binary(block) do

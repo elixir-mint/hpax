@@ -84,6 +84,19 @@ defmodule HPAXTest do
     end
   end
 
+  # https://datatracker.ietf.org/doc/html/rfc7541#section-6.2
+  property "decode/2 rejects dynamic resizes larger than the original table size" do
+    enc_table = HPAX.new(29)
+    dec_table = HPAX.new(29)
+
+    check all headers_to_encode <- list_of(header_with_store(), min_length: 1) do
+      assert {encoded, _enc_table} = HPAX.encode(headers_to_encode, enc_table)
+
+      encoded = <<0b001::3, 0b11110::5>> <> IO.iodata_to_binary(encoded)
+      assert {:error, :protocol_error} = HPAX.decode(encoded, dec_table)
+    end
+  end
+
   property "encoding then decoding headers is circular" do
     table = HPAX.new(500)
 
