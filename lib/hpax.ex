@@ -1,12 +1,12 @@
 defmodule HPax do
-  @moduledoc false
+  @moduledoc """
+  Support for the HPACK header compression algorithm.
 
-  # Support for the HPACK header compression algorithm.
-  #
-  # This module provides support for the HPACK header compression algorithm used mainly in HTTP/2.
-  # The HPACK algorithm requires an encoding context on the encoder side and a decoding context on
-  # the decoder side. These contexts are semantically different but structurally the same and they
-  # can both be created through `new/1`.
+  This module provides support for the HPACK header compression algorithm used mainly in HTTP/2.
+  The HPACK algorithm requires an encoding context on the encoder side and a decoding context on
+  the decoder side. These contexts are semantically different but structurally the same and they
+  can both be created through `new/1`.
+  """
 
   alias HPax.{Table, Types}
 
@@ -170,7 +170,7 @@ defmodule HPax do
 
   ## Examples
 
-      headers = [{":authority", "https://example.com"}]
+      headers = [{:store, ":authority", "https://example.com"}]
       context = HPax.new(1000)
       HPax.encode(headers, context)
       #=> {<<...>>, updated_context}
