@@ -14,7 +14,7 @@ defmodule HPAX.MixProject do
 
       # Hex
       package: package(),
-      description: "Small and composable HTTP client.",
+      description: "Implementation of the HPACK protocol (RFC 7541) for Elixir",
 
       # Docs
       name: "HPAX",
@@ -32,7 +32,12 @@ defmodule HPAX.MixProject do
   end
 
   defp deps do
-    []
+    [
+      {:ex_doc, "~> 0.20", only: :dev},
+      {:hpack, ">= 0.0.0", hex: :hpack_erl, only: :test},
+      {:stream_data, "~> 0.5.0", only: [:dev, :test]},
+      {:dialyxir, "~> 1.0.0-rc.6", only: [:dev, :test], runtime: false}
+    ]
   end
 
   defp package do
