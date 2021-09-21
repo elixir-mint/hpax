@@ -1,9 +1,9 @@
-defmodule HPax.Types do
+defmodule HPAX.Types do
   @moduledoc false
 
   use Bitwise
 
-  alias HPax.Huffman
+  alias HPAX.Huffman
 
   # This is used as a macro and not an inlined function because we want to be able to use it in
   # guards.
