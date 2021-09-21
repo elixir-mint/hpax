@@ -3,22 +3,45 @@ defmodule HPAX do
   Support for the HPACK header compression algorithm.
 
   This module provides support for the HPACK header compression algorithm used mainly in HTTP/2.
-  The HPACK algorithm requires an encoding context on the encoder side and a decoding context on
-  the decoder side. These contexts are semantically different but structurally the same and they
-  can both be created through `new/1`.
+
+  ## Encoding and decoding contexts
+
+  The HPACK algorithm requires both
+
+    * an encoding context on the encoder side
+    * a decoding context on the decoder side
+
+  These contexts are semantically different but structurally the same. In HPACK they are
+  implemented as **HPACK tables**. This library uses the name "tables" everywhere internally
+
+  HPACK tables can be created through the `new/1` function.
   """
 
   alias HPAX.{Table, Types}
 
+  @typedoc """
+  An HPACK header name.
+  """
   @type header_name() :: binary()
+
+  @typedoc """
+  An HPACK header value.
+  """
   @type header_value() :: binary()
 
   @valid_header_actions [:store, :store_name, :no_store, :never_store]
 
   @doc """
-  Create a new context.
+  Create a new HPACK table that can be used as encoding or decoding context.
 
-  `max_table_size` is the maximum table size (in bytes) for the newly created context.
+  See the "Encoding and decoding contexts" section in the module documentation.
+
+  `max_table_size` is the maximum table size (in bytes) for the newly created table.
+
+  ## Examples
+
+      encoding_context = HPAX.new(4096)
+
   """
   @spec new(non_neg_integer()) :: Table.t()
   def new(max_table_size) when is_integer(max_table_size) and max_table_size >= 0 do
@@ -27,33 +50,61 @@ defmodule HPAX do
 
   @doc """
   Resizes the given table to the given size.
+
+  ## Examples
+
+      decoding_context = HPAX.new(4096)
+      HPAX.resize(decoding_context, 8192)
+
   """
   @spec resize(Table.t(), non_neg_integer()) :: Table.t()
   defdelegate resize(table, new_size), to: Table
 
-  ## Decoding
-
   @doc """
-  Decodes a header block fragment (HBF) through a given context.
+  Decodes a header block fragment (HBF) through a given table.
 
-  If decoding is successful, this function returns a `{:ok, headers, updated_context}` tuple where
-  `headers` is a list of decoded headers, and `updated_context` is the updated context. If there's
+  If decoding is successful, this function returns a `{:ok, headers, updated_table}` tuple where
+  `headers` is a list of decoded headers, and `updated_table` is the updated table. If there's
   an error in decoding, this function returns `{:error, reason}`.
 
   ## Examples
 
-      context = HPAX.new(1000)
+      decoding_context = HPAX.new(1000)
       hbf = get_hbf_from_somewhere()
-      HPAX.decode(hbf, context)
-      #=> {:ok, [{":method", "GET"}], updated_context}
+      HPAX.decode(hbf, decoding_context)
+      #=> {:ok, [{":method", "GET"}], decoding_context}
 
   """
-  @spec decode(binary(), Table.t()) :: {:ok, [{binary(), binary()}], Table.t()} | {:error, term()}
+  @spec decode(binary(), Table.t()) ::
+          {:ok, [{header_name(), header_value()}], Table.t()} | {:error, term()}
   def decode(block, %Table{} = table) when is_binary(block) do
     decode_headers(block, table, _acc = [])
   catch
-    :throw, {:mint, error} -> {:error, error}
+    :throw, {:hpax, error} -> {:error, error}
   end
+
+  @doc """
+  Encodes a list of headers through the given table.
+
+  Returns a two-element tuple where the first element is a binary representing the encoded headers
+  and the second element is an updated table.
+
+  ## Examples
+
+      headers = [{:store, ":authority", "https://example.com"}]
+      encoding_context = HPAX.new(1000)
+      HPAX.encode(headers, encoding_context)
+      #=> {iodata, updated_encoding_context}
+
+  """
+  @spec encode([header], Table.t()) :: {iodata(), Table.t()}
+        when header: {action, header_name(), header_value()},
+             action: :store | :store_name | :no_store | :never_store
+  def encode(headers, %Table{} = table) when is_list(headers) do
+    encode_headers(headers, table, _acc = [])
+  end
+
+  ## Helpers
 
   defp decode_headers(<<>>, table, acc) do
     {:ok, Enum.reverse(acc), table}
@@ -136,51 +187,28 @@ defmodule HPAX do
   end
 
   defp decode_headers(_other, _table, _acc) do
-    throw({:mint, :protocol_error})
+    throw({:hpax, :protocol_error})
   end
 
   defp lookup_by_index!(table, index) do
     case Table.lookup_by_index(table, index) do
       {:ok, header} -> header
-      :error -> throw({:mint, {:index_not_found, index}})
+      :error -> throw({:hpax, {:index_not_found, index}})
     end
   end
 
   defp decode_integer(bitstring, prefix) do
     case Types.decode_integer(bitstring, prefix) do
       {:ok, int, rest} -> {int, rest}
-      :error -> throw({:mint, :bad_integer_encoding})
+      :error -> throw({:hpax, :bad_integer_encoding})
     end
   end
 
   defp decode_binary(binary) do
     case Types.decode_binary(binary) do
       {:ok, binary, rest} -> {binary, rest}
-      :error -> throw({:mint, :bad_binary_encoding})
+      :error -> throw({:hpax, :bad_binary_encoding})
     end
-  end
-
-  ## Encoding
-
-  @doc """
-  Encodes a list of headers through the given context.
-
-  Returns a two-element tuple where the first element is a binary representing the encoded headers
-  and the second element is an updated context.
-
-  ## Examples
-
-      headers = [{:store, ":authority", "https://example.com"}]
-      context = HPAX.new(1000)
-      HPAX.encode(headers, context)
-      #=> {<<...>>, updated_context}
-
-  """
-  @spec encode([header], Table.t()) :: {iodata(), Table.t()}
-        when header: {action, header_name(), header_value()},
-             action: :store | :store_name | :no_store | :never_store
-  def encode(headers, %Table{} = table) when is_list(headers) do
-    encode_headers(headers, table, _acc = [])
   end
 
   defp encode_headers([], table, acc) do
