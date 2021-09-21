@@ -1,4 +1,4 @@
-defmodule HPax.Huffman do
+defmodule HPAX.Huffman do
   @moduledoc false
 
   use Bitwise

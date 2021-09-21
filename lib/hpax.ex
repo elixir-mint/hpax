@@ -1,4 +1,4 @@
-defmodule HPax do
+defmodule HPAX do
   @moduledoc """
   Support for the HPACK header compression algorithm.
 
@@ -8,7 +8,7 @@ defmodule HPax do
   can both be created through `new/1`.
   """
 
-  alias HPax.{Table, Types}
+  alias HPAX.{Table, Types}
 
   @type header_name() :: binary()
   @type header_value() :: binary()
@@ -42,9 +42,9 @@ defmodule HPax do
 
   ## Examples
 
-      context = HPax.new(1000)
+      context = HPAX.new(1000)
       hbf = get_hbf_from_somewhere()
-      HPax.decode(hbf, context)
+      HPAX.decode(hbf, context)
       #=> {:ok, [{":method", "GET"}], updated_context}
 
   """
@@ -171,8 +171,8 @@ defmodule HPax do
   ## Examples
 
       headers = [{:store, ":authority", "https://example.com"}]
-      context = HPax.new(1000)
-      HPax.encode(headers, context)
+      context = HPAX.new(1000)
+      HPAX.encode(headers, context)
       #=> {<<...>>, updated_context}
 
   """

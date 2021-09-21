@@ -1,14 +1,14 @@
-defmodule HPaxTest do
+defmodule HPAXTest do
   use ExUnit.Case, async: true
   use ExUnitProperties
 
   test "new/1" do
-    assert %HPax.Table{} = HPax.new(100)
+    assert %HPAX.Table{} = HPAX.new(100)
   end
 
   # https://http2.github.io/http2-spec/compression.html#rfc.section.C.2.1
   test "decode/2 with an example from the spec" do
-    table = HPax.new(1000)
+    table = HPAX.new(1000)
 
     dump =
       <<0x40, 0x0A, 0x63, 0x75>> <>
@@ -17,44 +17,44 @@ defmodule HPaxTest do
         <<0x0D, 0x63, 0x75, 0x73>> <>
         <<0x74, 0x6F, 0x6D, 0x2D>> <> <<0x68, 0x65, 0x61, 0x64>> <> <<0x65, 0x72>>
 
-    assert {:ok, headers, %HPax.Table{}} = HPax.decode(dump, table)
+    assert {:ok, headers, %HPAX.Table{}} = HPAX.decode(dump, table)
     assert headers == [{"custom-key", "custom-header"}]
   end
 
   test "manually doing operations on the table that property-based testing would be " <>
          "so much better at doing :( we need stateful testing folks" do
-    enc_table = HPax.new(1000)
-    dec_table = HPax.new(1000)
+    enc_table = HPAX.new(1000)
+    dec_table = HPAX.new(1000)
 
-    {encoded, enc_table} = HPax.encode([{:store, "a", "A"}], enc_table)
+    {encoded, enc_table} = HPAX.encode([{:store, "a", "A"}], enc_table)
     encoded = IO.iodata_to_binary(encoded)
-    assert {:ok, [{"a", "A"}], dec_table} = HPax.decode(encoded, dec_table)
+    assert {:ok, [{"a", "A"}], dec_table} = HPAX.decode(encoded, dec_table)
     assert dec_table.entries == [{"a", "A"}]
 
-    {encoded, enc_table} = HPax.encode([{:store_name, "a", "other"}], enc_table)
+    {encoded, enc_table} = HPAX.encode([{:store_name, "a", "other"}], enc_table)
     encoded = IO.iodata_to_binary(encoded)
-    assert {:ok, [{"a", "other"}], dec_table} = HPax.decode(encoded, dec_table)
+    assert {:ok, [{"a", "other"}], dec_table} = HPAX.decode(encoded, dec_table)
     assert dec_table.entries == [{"a", "A"}]
 
-    {encoded, enc_table} = HPax.encode([{:store_name, "b", "B"}], enc_table)
+    {encoded, enc_table} = HPAX.encode([{:store_name, "b", "B"}], enc_table)
     encoded = IO.iodata_to_binary(encoded)
-    assert {:ok, [{"b", "B"}], dec_table} = HPax.decode(encoded, dec_table)
+    assert {:ok, [{"b", "B"}], dec_table} = HPAX.decode(encoded, dec_table)
     assert dec_table.entries == [{"b", "B"}, {"a", "A"}]
 
-    {encoded, _enc_table} = HPax.encode([{:no_store, "c", "C"}], enc_table)
+    {encoded, _enc_table} = HPAX.encode([{:no_store, "c", "C"}], enc_table)
     encoded = IO.iodata_to_binary(encoded)
-    assert {:ok, [{"c", "C"}], dec_table} = HPax.decode(encoded, dec_table)
+    assert {:ok, [{"c", "C"}], dec_table} = HPAX.decode(encoded, dec_table)
     assert dec_table.entries == [{"b", "B"}, {"a", "A"}]
   end
 
   property "encoding then decoding headers is circular" do
-    table = HPax.new(500)
+    table = HPAX.new(500)
 
     check all headers_to_encode <- list_of(header_with_action()),
               headers = for({_action, name, value} <- headers_to_encode, do: {name, value}) do
-      assert {encoded, table} = HPax.encode(headers_to_encode, table)
+      assert {encoded, table} = HPAX.encode(headers_to_encode, table)
       encoded = IO.iodata_to_binary(encoded)
-      assert {:ok, decoded, _table} = HPax.decode(encoded, table)
+      assert {:ok, decoded, _table} = HPAX.decode(encoded, table)
       assert decoded == headers
     end
   end
@@ -62,23 +62,23 @@ defmodule HPaxTest do
   describe "interacting with joedevivo/hpack" do
     property "encoding through joedevivo/hpack and decoding through HPACK" do
       encode_table = :hpack.new_context(10_000)
-      decode_table = HPax.new(10_000)
+      decode_table = HPAX.new(10_000)
 
       header_with_no_empty_value = filter(header(), fn {_name, value} -> value != "" end)
 
       check all headers <- list_of(header_with_no_empty_value) do
         {:ok, {encoded, _encode_table}} = :hpack.encode(headers, encode_table)
-        assert {:ok, ^headers, _} = HPax.decode(encoded, decode_table)
+        assert {:ok, ^headers, _} = HPAX.decode(encoded, decode_table)
       end
     end
 
     property "encoding through HPACK and decoding through joedevivo/hpack" do
-      encode_table = HPax.new(10_000)
+      encode_table = HPAX.new(10_000)
       decode_table = :hpack.new_context(10_000)
 
       check all headers_with_action <- list_of(header_with_action(), min_length: 1),
                 headers = for({_action, name, value} <- headers_with_action, do: {name, value}) do
-        {encoded, _encode_table} = HPax.encode(headers_with_action, encode_table)
+        {encoded, _encode_table} = HPAX.encode(headers_with_action, encode_table)
 
         assert {:ok, {^headers, _decode_table}} =
                  :hpack.decode(IO.iodata_to_binary(encoded), decode_table)
@@ -94,7 +94,7 @@ defmodule HPaxTest do
 
   defp header() do
     header_from_static_table =
-      bind(member_of(HPax.Table.__static_table__()), fn
+      bind(member_of(HPAX.Table.__static_table__()), fn
         {name, nil} -> {constant(name), binary()}
         {name, value} -> constant({name, value})
       end)

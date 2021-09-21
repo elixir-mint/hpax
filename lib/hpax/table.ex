@@ -1,4 +1,4 @@
-defmodule HPax.Table do
+defmodule HPAX.Table do
   @moduledoc false
 
   defstruct [

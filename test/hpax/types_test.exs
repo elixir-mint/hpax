@@ -1,8 +1,8 @@
-defmodule HPax.TypesTest do
+defmodule HPAX.TypesTest do
   use ExUnit.Case, async: true
   use ExUnitProperties
 
-  import HPax.Types
+  import HPAX.Types
 
   describe "examples from the spec" do
     test "for encode_integer/2" do

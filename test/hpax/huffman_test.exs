@@ -1,8 +1,8 @@
-defmodule HPax.HuffmanTest do
+defmodule HPAX.HuffmanTest do
   use ExUnit.Case, async: true
   use ExUnitProperties
 
-  alias HPax.Huffman
+  alias HPAX.Huffman
 
   property "encoding and then decoding is circular" do
     check all binary <- binary() do

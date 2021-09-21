@@ -1,17 +1,17 @@
-# HPax
+# HPAX
 
 [![Build Status](https://travis-ci.org/elixir-mint/hpax.svg?branch=master)](https://travis-ci.org/elixir-mint/hpax)
 [![Docs](https://img.shields.io/badge/api-docs-green.svg?style=flat)](https://hexdocs.pm/hpax)
 [![Hex.pm Version](http://img.shields.io/hexpm/v/hpax.svg?style=flat)](https://hex.pm/packages/hpax)
 
-HPax is an Elixir implementation of the HPACK header compression algorithm as used in HTTP/2 and
-defined in RFC 7541. HPax is (or will soon be) used by several Elixir projects, including the
+HPAX is an Elixir implementation of the HPACK header compression algorithm as used in HTTP/2 and
+defined in RFC 7541. HPAX is (or will soon be) used by several Elixir projects, including the
 [Mint](https://github.com/elixir-mint/mint) HTTP client and
 [bandit](https://github.com/mtrudel/bandit) HTTP server projects.
 
 ## Installation
 
-To install HPax, add it to your `mix.exs` file.
+To install HPAX, add it to your `mix.exs` file.
 
 ```elixir
 defp deps do
@@ -25,31 +25,31 @@ Then, run `$ mix deps.get`.
 
 ## Usage
 
-HPax is designed to be used in both encoding and decoding scenarios. In both cases, a context is
-used to maintain state internal to the HPACK algorithm. In the common use case of using HPax
+HPAX is designed to be used in both encoding and decoding scenarios. In both cases, a context is
+used to maintain state internal to the HPACK algorithm. In the common use case of using HPAX
 within HTTP/2, this context must be shared between any subsequent encoding/decoding calls within
 an endpoint. Note that the contexts used for encoding and decoding within HTTP/2 are completely
 distinct from one another, even though they are structurally identical.
 
-To encode a set of headers into a binary with HPax:
+To encode a set of headers into a binary with HPAX:
 
 ```elixir
-ctx = HPax.new(4096)
+ctx = HPAX.new(4096)
 headers = [{:store, ":status", "201"}, {:store, "location", "http://example.com"}]
-{encoded_headers, ctx} = HPax.encode(headers, ctx)
+{encoded_headers, ctx} = HPAX.encode(headers, ctx)
 #=> {iodata, updated_context}
 ```
 
-To decode a binary into a set of headers with HPax:
+To decode a binary into a set of headers with HPAX:
 
 ```elixir
-ctx = HPax.new(4096)
+ctx = HPAX.new(4096)
 encoded_headers = <<...>>
-{:ok, headers, ctx} = HPax.decode(encoded_headers, ctx)
+{:ok, headers, ctx} = HPAX.decode(encoded_headers, ctx)
 #=> {:ok, [{:store, ":status", "201"}, {:store, "location", "http://example.com"}], updated_context}
 ```
 
-For complete usage information, please see the HPax [documentation](https://hex.pm/packages/hpax).
+For complete usage information, please see the HPAX [documentation](https://hex.pm/packages/hpax).
 
 ## Contributing
 

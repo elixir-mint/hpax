@@ -1,8 +1,8 @@
-defmodule HPax.TableTest do
+defmodule HPAX.TableTest do
   use ExUnit.Case, async: true
   use ExUnitProperties
 
-  alias HPax.Table
+  alias HPAX.Table
 
   test "new/1" do
     assert %Table{} = Table.new(100)
