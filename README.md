@@ -27,25 +27,26 @@ Then, run `$ mix deps.get`.
 
 HPAX is designed to be used in both encoding and decoding scenarios. In both cases, a context is
 used to maintain state internal to the HPACK algorithm. In the common use case of using HPAX
-within HTTP/2, this context must be shared between any subsequent encoding/decoding calls within
+within HTTP/2, this context is called a **table** and must be shared between any
+subsequent encoding/decoding calls within
 an endpoint. Note that the contexts used for encoding and decoding within HTTP/2 are completely
 distinct from one another, even though they are structurally identical.
 
 To encode a set of headers into a binary with HPAX:
 
 ```elixir
-ctx = HPAX.new(4096)
+context = HPAX.new(4096)
 headers = [{:store, ":status", "201"}, {:store, "location", "http://example.com"}]
-{encoded_headers, ctx} = HPAX.encode(headers, ctx)
+{encoded_headers, context} = HPAX.encode(headers, context)
 #=> {iodata, updated_context}
 ```
 
 To decode a binary into a set of headers with HPAX:
 
 ```elixir
-ctx = HPAX.new(4096)
+context = HPAX.new(4096)
 encoded_headers = <<...>>
-{:ok, headers, ctx} = HPAX.decode(encoded_headers, ctx)
+{:ok, headers, context} = HPAX.decode(encoded_headers, context)
 #=> {:ok, [{:store, ":status", "201"}, {:store, "location", "http://example.com"}], updated_context}
 ```
 
