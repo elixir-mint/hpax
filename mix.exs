@@ -36,7 +36,7 @@ defmodule HPAX.MixProject do
       {:ex_doc, "~> 0.20", only: :dev},
       {:hpack, ">= 0.0.0", hex: :hpack_erl, only: :test},
       {:stream_data, "~> 0.5.0", only: [:dev, :test]},
-      {:dialyxir, "~> 1.0.0-rc.6", only: [:dev, :test], runtime: false}
+      {:dialyxir, "~> 1.0", only: [:dev, :test], runtime: false}
     ]
   end
 
