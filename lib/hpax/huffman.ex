@@ -81,7 +81,7 @@ defmodule HPAX.Huffman do
     if take_significant_bits(unquote(eos_bits), unquote(eos_bit_count), padding_size) == padding do
       <<>>
     else
-      throw({:mint, {:protocol_error, :invalid_huffman_encoding}})
+      throw({:hpax, {:protocol_error, :invalid_huffman_encoding}})
     end
   end
 
