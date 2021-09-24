@@ -77,6 +77,21 @@ defmodule HPAX do
   """
   @spec decode(binary(), Table.t()) ::
           {:ok, [{header_name(), header_value()}], Table.t()} | {:error, term()}
+
+  # Dynamic resizes must occur only at the start of a block
+  # https://datatracker.ietf.org/doc/html/rfc7541#section-4.2
+  def decode(<<0b001::3, rest::bitstring>>, %Table{} = table) do
+    {new_size, rest} = decode_integer(rest, 5)
+
+    # Dynamic resizes must be less than max table size
+    # https://datatracker.ietf.org/doc/html/rfc7541#section-6.3
+    if new_size <= table.max_table_size do
+      decode(rest, Table.resize(table, new_size))
+    else
+      {:error, :protocol_error}
+    end
+  end
+
   def decode(block, %Table{} = table) when is_binary(block) do
     decode_headers(block, table, _acc = [])
   catch
@@ -178,12 +193,6 @@ defmodule HPAX do
 
     # TODO: enforce the "never indexed" part somehow.
     decode_headers(rest, table, [{name, value} | acc])
-  end
-
-  # Dynamic table size update
-  defp decode_headers(<<0b001::3, rest::bitstring>>, table, acc) do
-    {new_size, rest} = decode_integer(rest, 5)
-    decode_headers(rest, Table.resize(table, new_size), acc)
   end
 
   defp decode_headers(_other, _table, _acc) do

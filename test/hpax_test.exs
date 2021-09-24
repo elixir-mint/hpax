@@ -47,6 +47,56 @@ defmodule HPAXTest do
     assert dec_table.entries == [{"b", "B"}, {"a", "A"}]
   end
 
+  # https://datatracker.ietf.org/doc/html/rfc7541#section-4.2
+  property "decode/2 accepts dynamic resizes at the start of a block" do
+    enc_table = HPAX.new(20_000)
+    # Start with a non-empty decode table
+    dec_table = HPAX.new(20_000)
+    {encoded, _enc_table} = HPAX.encode([{:store, "bogus", "BOGUS"}], dec_table)
+    encoded = IO.iodata_to_binary(encoded)
+    assert {:ok, _decoded, dec_table} = HPAX.decode(encoded, dec_table)
+    assert dec_table.size > 0
+
+    check all headers_to_encode <- list_of(header_with_store(), min_length: 1) do
+      assert {encoded, enc_table} = HPAX.encode(headers_to_encode, enc_table)
+      encoded = IO.iodata_to_binary(encoded)
+      assert {:ok, _decoded, new_dec_table} = HPAX.decode(encoded, dec_table)
+      assert new_dec_table.size > enc_table.size
+
+      # Now prepend a table zeroing to the beginning and ensure that we are exactly
+      # the same size as the encode table
+      encoded = <<0b001::3, 0::5>> <> encoded
+      assert {:ok, _decoded, new_dec_table} = HPAX.decode(encoded, dec_table)
+      assert new_dec_table.size == enc_table.size
+    end
+  end
+
+  # https://datatracker.ietf.org/doc/html/rfc7541#section-4.2
+  property "decode/2 rejects dynamic resizes anywhere but at the start of a block" do
+    enc_table = HPAX.new(20_000)
+    dec_table = HPAX.new(20_000)
+
+    check all headers_to_encode <- list_of(header_with_store(), min_length: 1) do
+      assert {encoded, _enc_table} = HPAX.encode(headers_to_encode, enc_table)
+
+      encoded = IO.iodata_to_binary(encoded) <> <<0b001::3, 0::5>>
+      assert {:error, :protocol_error} = HPAX.decode(encoded, dec_table)
+    end
+  end
+
+  # https://datatracker.ietf.org/doc/html/rfc7541#section-6.2
+  property "decode/2 rejects dynamic resizes larger than the original table size" do
+    enc_table = HPAX.new(29)
+    dec_table = HPAX.new(29)
+
+    check all headers_to_encode <- list_of(header_with_store(), min_length: 1) do
+      assert {encoded, _enc_table} = HPAX.encode(headers_to_encode, enc_table)
+
+      encoded = <<0b001::3, 0b11110::5>> <> IO.iodata_to_binary(encoded)
+      assert {:error, :protocol_error} = HPAX.decode(encoded, dec_table)
+    end
+  end
+
   property "encoding then decoding headers is circular" do
     table = HPAX.new(500)
 
@@ -84,6 +134,10 @@ defmodule HPAXTest do
                  :hpack.decode(IO.iodata_to_binary(encoded), decode_table)
       end
     end
+  end
+
+  defp header_with_store() do
+    map(header(), fn {name, value} -> {:store, name, value} end)
   end
 
   # Header generator.
