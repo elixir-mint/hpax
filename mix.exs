@@ -12,6 +12,9 @@ defmodule HPAX.MixProject do
       start_permanent: Mix.env() == :prod,
       deps: deps(),
 
+      # Tests
+      test_coverage: [tool: ExCoveralls],
+
       # Hex
       package: package(),
       description: "Implementation of the HPACK protocol (RFC 7541) for Elixir",
@@ -36,7 +39,8 @@ defmodule HPAX.MixProject do
       {:ex_doc, "~> 0.20", only: :dev},
       {:hpack, ">= 0.0.0", hex: :hpack_erl, only: :test},
       {:stream_data, "~> 0.5.0", only: [:dev, :test]},
-      {:dialyxir, "~> 1.0", only: [:dev, :test], runtime: false}
+      {:dialyxir, "~> 1.0", only: [:dev, :test], runtime: false},
+      {:excoveralls, "~> 0.14", only: :test}
     ]
   end
 

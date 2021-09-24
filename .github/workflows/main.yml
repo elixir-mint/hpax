@@ -13,8 +13,14 @@ jobs:
           - erlang: "24.1"
             elixir: "1.12.3"
             lint: true
+            coverage: true
           - erlang: "18.3"
             elixir: "1.5.3"
+
+    env:
+      MIX_ENV: test
+      GITHUB_TOKEN: ${{secrets.GITHUB_TOKEN}}
+
     steps:
       - uses: actions/checkout@v1
 
@@ -25,19 +31,27 @@ jobs:
           elixir-version: ${{matrix.elixir}}
 
       - name: Install dependencies
-        run: mix deps.get
+        run: mix deps.get --only test
+
+      - name: Check formatting
+        run: mix format --check-formatted
+        if: ${{matrix.lint}}
 
       - name: Check for unused dependencies
-        run: mix deps.unlock --check-unused
+        run: mix deps.get && mix deps.unlock --check-unused
         if: ${{matrix.lint}}
+
+      - name: Compile dependencies
+        run: mix deps.compile
 
       - name: Compile with --warnings-as-errors
         run: mix compile --warnings-as-errors
         if: ${{matrix.lint}}
 
-      - name: Check mix format
-        run: mix format --check-formatted
-        if: ${{matrix.lint}}
-
       - name: Run tests
         run: mix test --trace
+        if: ${{!matrix.coverage}}
+
+      - name: Run tests with coverage
+        run: mix coveralls.github --trace
+        if: ${{matrix.coverage}}
