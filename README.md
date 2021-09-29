@@ -5,7 +5,7 @@
 [![Hex.pm Version](http://img.shields.io/hexpm/v/hpax.svg?style=flat)](https://hex.pm/packages/hpax)
 
 HPAX is an Elixir implementation of the HPACK header compression algorithm as used in HTTP/2 and
-defined in RFC 7541. HPAX is (or will soon be) used by several Elixir projects, including the
+defined in RFC 7541. HPAX is used by several Elixir projects, including the
 [Mint](https://github.com/elixir-mint/mint) HTTP client and
 [bandit](https://github.com/mtrudel/bandit) HTTP server projects.
 
