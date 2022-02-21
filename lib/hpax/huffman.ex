@@ -1,7 +1,7 @@
 defmodule HPAX.Huffman do
   @moduledoc false
 
-  import Bitwise, only: [{:>>>, 2}]
+  import Bitwise, only: [>>>: 2]
 
   # This file is downloaded from the spec directly.
   # http://httpwg.org/specs/rfc7541.html#huffman.code
