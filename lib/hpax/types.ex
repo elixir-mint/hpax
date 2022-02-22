@@ -1,7 +1,7 @@
 defmodule HPAX.Types do
   @moduledoc false
 
-  use Bitwise
+  import Bitwise, only: [<<<: 2]
 
   alias HPAX.Huffman
 
