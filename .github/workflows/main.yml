@@ -1,17 +1,21 @@
 name: CI
 
-on: [push, pull_request]
+on:
+  pull_request:
+  push:
+    branches:
+      - main
 
 jobs:
   test:
-    name: Test
+    name: Test (Elixir ${{ matrix.elixir }}, OTP ${{ matrix.erlang }})
     runs-on: ubuntu-18.04
     strategy:
       fail-fast: false
       matrix:
         include:
-          - erlang: "24.1"
-            elixir: "1.12.3"
+          - erlang: "25.0"
+            elixir: "1.13"
             lint: true
             coverage: true
           - erlang: "18.3"
