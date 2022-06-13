@@ -47,6 +47,18 @@ defmodule HPAXTest do
     assert dec_table.entries == [{"b", "B"}, {"a", "A"}]
   end
 
+  property "encode/3 with a single action" do
+    table = HPAX.new(500)
+
+    check all action <- store_action(),
+              headers <- list_of(header()) do
+      assert {encoded, table} = HPAX.encode(action, headers, table)
+      encoded = IO.iodata_to_binary(encoded)
+      assert {:ok, decoded, _table} = HPAX.decode(encoded, table)
+      assert decoded == headers
+    end
+  end
+
   # https://datatracker.ietf.org/doc/html/rfc7541#section-4.2
   property "decode/2 accepts dynamic resizes at the start of a block" do
     enc_table = HPAX.new(20_000)
@@ -142,7 +154,7 @@ defmodule HPAXTest do
 
   # Header generator.
   defp header_with_action() do
-    action = member_of([:store, :store_name, :no_store, :never_store])
+    action = store_action()
     bind(header(), fn {name, value} -> {action, constant(name), constant(value)} end)
   end
 
@@ -159,5 +171,9 @@ defmodule HPAXTest do
       {1, header_from_static_table},
       {2, random_header}
     ])
+  end
+
+  defp store_action do
+    member_of([:store, :store_name, :no_store, :never_store])
   end
 end

@@ -119,6 +119,35 @@ defmodule HPAX do
     encode_headers(headers, table, _acc = [])
   end
 
+  @doc """
+  Ecnodes a list of headers through the given table, applying the same `action` to all of them.
+
+  This function is the similar to `encode/2`, but `headers` are `{name, value}` tuples instead,
+  and the same `action` is applied to all headers.
+
+    ## Examples
+
+      headers = [{":authority", "https://example.com"}]
+      encoding_context = HPAX.new(1000)
+      HPAX.encode(:store, headers, encoding_context)
+      #=> {iodata, updated_encoding_context}
+
+  """
+  # TODO: remove once we depend on Elixir 1.7+.
+  if Version.match?(System.version(), ">= 1.7.0") do
+    @doc since: "0.2.0"
+  end
+
+  @spec encode(action, [header], Table.t()) :: {iodata(), Table.t()}
+        when action: :store | :store_name | :no_store | :never_store,
+             header: {header_name(), header_value()}
+  def encode(action, headers, %Table{} = table)
+      when is_list(headers) and action in [:store, :store_name, :no_store, :never_store] do
+    headers
+    |> Enum.map(fn {name, value} -> {action, name, value} end)
+    |> encode(table)
+  end
+
   ## Helpers
 
   defp decode_headers(<<>>, table, acc) do
