@@ -6,6 +6,14 @@ defmodule HPAXTest do
     assert %HPAX.Table{} = HPAX.new(100)
   end
 
+  describe "new/2" do
+    test "raises for unknown options" do
+      assert_raise ArgumentError, "unknown option: :unknown", fn ->
+        HPAX.new(100, unknown: :option)
+      end
+    end
+  end
+
   # https://http2.github.io/http2-spec/compression.html#rfc.section.C.2.1
   test "decode/2 with an example from the spec" do
     table = HPAX.new(1000)
@@ -23,7 +31,7 @@ defmodule HPAXTest do
 
   # https://http2.github.io/http2-spec/compression.html#rfc.section.C.3.1
   test "encode/2 with a literal example from the spec" do
-    table = HPAX.new(1000, huffman: :never)
+    table = HPAX.new(1000, huffman_encoding: :never)
 
     headers = [
       {:store, ":method", "GET"},
@@ -43,7 +51,7 @@ defmodule HPAXTest do
 
   # https://http2.github.io/http2-spec/compression.html#rfc.section.C.4.1
   test "encode/2 with a Huffman example from the spec" do
-    table = HPAX.new(1000)
+    table = HPAX.new(1000, huffman_encoding: :always)
 
     headers = [
       {:store, ":method", "GET"},

@@ -1,24 +1,24 @@
 defmodule HPAX.Table do
   @moduledoc false
 
+  @enforce_keys [:max_table_size, :huffman_encoding]
   defstruct [
     :max_table_size,
-    :huffman,
+    :huffman_encoding,
     entries: [],
     size: 0,
     length: 0
   ]
 
+  @type huffman_encoding() :: :always | :never
+
   @type t() :: %__MODULE__{
           max_table_size: non_neg_integer(),
-          huffman: huffman_strategy(),
+          huffman_encoding: huffman_encoding(),
           entries: [{binary(), binary()}],
           size: non_neg_integer(),
           length: non_neg_integer()
         }
-
-  @type huffman_strategy() :: :always | :never
-  @type option :: {:huffman, huffman_strategy()}
 
   @static_table [
     {":authority", nil},
@@ -93,10 +93,11 @@ defmodule HPAX.Table do
   The maximum size is not the maximum number of entries but rather the maximum size as defined in
   http://httpwg.org/specs/rfc7541.html#maximum.table.size.
   """
-  @spec new(non_neg_integer(), [option()]) :: t()
-  def new(max_table_size, options \\ []) do
-    huffman = Keyword.get(options, :huffman, :always)
-    %__MODULE__{max_table_size: max_table_size, huffman: huffman}
+  @spec new(non_neg_integer(), huffman_encoding()) :: t()
+  def new(max_table_size, huffman_encoding)
+      when is_integer(max_table_size) and max_table_size >= 0 and
+             huffman_encoding in [:always, :never] do
+    %__MODULE__{max_table_size: max_table_size, huffman_encoding: huffman_encoding}
   end
 
   @doc """
