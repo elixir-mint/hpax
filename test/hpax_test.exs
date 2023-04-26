@@ -21,6 +21,46 @@ defmodule HPAXTest do
     assert headers == [{"custom-key", "custom-header"}]
   end
 
+  # https://http2.github.io/http2-spec/compression.html#rfc.section.C.3.1
+  test "encode/2 with a literal example from the spec" do
+    table = HPAX.new(1000, huffman: :never)
+
+    headers = [
+      {:store, ":method", "GET"},
+      {:store, ":scheme", "http"},
+      {:store, ":path", "/"},
+      {:store, ":authority", "www.example.com"}
+    ]
+
+    assert {encoded, %HPAX.Table{}} = HPAX.encode(headers, table)
+
+    expected =
+      <<0x82, 0x86, 0x84, 0x41, 0x0F, 0x77, 0x77, 0x77, 0x2E, 0x65, 0x78, 0x61, 0x6D, 0x70, 0x6C,
+        0x65, 0x2E, 0x63, 0x6F, 0x6D>>
+
+    assert IO.iodata_to_binary(encoded) == expected
+  end
+
+  # https://http2.github.io/http2-spec/compression.html#rfc.section.C.4.1
+  test "encode/2 with a Huffman example from the spec" do
+    table = HPAX.new(1000)
+
+    headers = [
+      {:store, ":method", "GET"},
+      {:store, ":scheme", "http"},
+      {:store, ":path", "/"},
+      {:store, ":authority", "www.example.com"}
+    ]
+
+    assert {encoded, %HPAX.Table{}} = HPAX.encode(headers, table)
+
+    expected =
+      <<0x82, 0x86, 0x84, 0x41, 0x8C, 0xF1, 0xE3, 0xC2, 0xE5, 0xF2, 0x3A, 0x6B, 0xA0, 0xAB, 0x90,
+        0xF4, 0xFF>>
+
+    assert IO.iodata_to_binary(encoded) == expected
+  end
+
   test "manually doing operations on the table that property-based testing would be " <>
          "so much better at doing :( we need stateful testing folks" do
     enc_table = HPAX.new(1000)

@@ -3,6 +3,7 @@ defmodule HPAX.Table do
 
   defstruct [
     :max_table_size,
+    :huffman,
     entries: [],
     size: 0,
     length: 0
@@ -10,10 +11,14 @@ defmodule HPAX.Table do
 
   @type t() :: %__MODULE__{
           max_table_size: non_neg_integer(),
+          huffman: huffman_strategy(),
           entries: [{binary(), binary()}],
           size: non_neg_integer(),
           length: non_neg_integer()
         }
+
+  @type huffman_strategy() :: :always | :never
+  @type option :: {:huffman, huffman_strategy()}
 
   @static_table [
     {":authority", nil},
@@ -88,9 +93,10 @@ defmodule HPAX.Table do
   The maximum size is not the maximum number of entries but rather the maximum size as defined in
   http://httpwg.org/specs/rfc7541.html#maximum.table.size.
   """
-  @spec new(non_neg_integer()) :: t()
-  def new(max_table_size) do
-    %__MODULE__{max_table_size: max_table_size}
+  @spec new(non_neg_integer(), [option()]) :: t()
+  def new(max_table_size, options \\ []) do
+    huffman = Keyword.get(options, :huffman, :always)
+    %__MODULE__{max_table_size: max_table_size, huffman: huffman}
   end
 
   @doc """
