@@ -32,6 +32,14 @@ defmodule HPAX do
   @valid_header_actions [:store, :store_name, :no_store, :never_store]
 
   @doc """
+  Creates a new HPACK table.
+
+  Same as `new/2` with default options.
+  """
+  @spec new(non_neg_integer()) :: Table.t()
+  def new(max_table_size), do: new(max_table_size, [])
+
+  @doc """
   Create a new HPACK table that can be used as encoding or decoding context.
 
   See the "Encoding and decoding contexts" section in the module documentation.
@@ -42,17 +50,18 @@ defmodule HPAX do
 
   This function accepts the following `options`:
 
-    * `:huffman_encoding` - `:always` or `:never`. If `:always`, then HPAX will always
-      encode headers using Huffman encoding. If `:never`, HPAX will not use any
-      Huffman encoding. Defaults to `:never`.
+    * `:huffman_encoding` - (since 0.3.0) `:always` or `:never`. If `:always`,
+      then HPAX will always encode headers using Huffman encoding. If `:never`,
+      HPAX will not use any Huffman encoding. Defaults to `:never`.
 
   ## Examples
 
       encoding_context = HPAX.new(4096)
 
   """
+  @doc since: "0.3.0"
   @spec new(non_neg_integer(), [keyword()]) :: Table.t()
-  def new(max_table_size, options \\ [])
+  def new(max_table_size, options)
       when is_integer(max_table_size) and max_table_size >= 0 and is_list(options) do
     options = Keyword.put_new(options, :huffman_encoding, :never)
 
