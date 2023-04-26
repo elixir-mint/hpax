@@ -134,11 +134,7 @@ defmodule HPAX do
       #=> {iodata, updated_encoding_context}
 
   """
-  # TODO: remove once we depend on Elixir 1.7+.
-  if Version.match?(System.version(), ">= 1.7.0") do
-    @doc since: "0.2.0"
-  end
-
+  @doc since: "0.2.0"
   @spec encode(action, [header], Table.t()) :: {iodata(), Table.t()}
         when action: :store | :store_name | :no_store | :never_store,
              header: {header_name(), header_value()}
