@@ -43,9 +43,10 @@ defmodule HPAX do
       encoding_context = HPAX.new(4096)
 
   """
-  @spec new(non_neg_integer()) :: Table.t()
-  def new(max_table_size) when is_integer(max_table_size) and max_table_size >= 0 do
-    Table.new(max_table_size)
+  @spec new(non_neg_integer(), [Table.option()]) :: Table.t()
+  def new(max_table_size, options \\ [])
+      when is_integer(max_table_size) and max_table_size >= 0 do
+    Table.new(max_table_size, options)
   end
 
   @doc """
@@ -255,28 +256,32 @@ defmodule HPAX do
 
   defp encode_headers([{action, name, value} | rest], table, acc)
        when action in @valid_header_actions and is_binary(name) and is_binary(value) do
+    huffman? = table.huffman == :always
+
     {encoded, table} =
       case Table.lookup_by_header(table, name, value) do
         {:full, index} ->
           {encode_indexed_header(index), table}
 
         {:name, index} when action == :store ->
-          {encode_literal_header_with_indexing(index, value), Table.add(table, name, value)}
+          {encode_literal_header_with_indexing(index, value, huffman?),
+           Table.add(table, name, value)}
 
         {:name, index} when action in [:store_name, :no_store] ->
-          {encode_literal_header_without_indexing(index, value), table}
+          {encode_literal_header_without_indexing(index, value, huffman?), table}
 
         {:name, index} when action == :never_store ->
-          {encode_literal_header_never_indexed(index, value), table}
+          {encode_literal_header_never_indexed(index, value, huffman?), table}
 
         :not_found when action in [:store, :store_name] ->
-          {encode_literal_header_with_indexing(name, value), Table.add(table, name, value)}
+          {encode_literal_header_with_indexing(name, value, huffman?),
+           Table.add(table, name, value)}
 
         :not_found when action == :no_store ->
-          {encode_literal_header_without_indexing(name, value), table}
+          {encode_literal_header_without_indexing(name, value, huffman?), table}
 
         :not_found when action == :never_store ->
-          {encode_literal_header_never_indexed(name, value), table}
+          {encode_literal_header_never_indexed(name, value, huffman?), table}
       end
 
     encode_headers(rest, table, [acc, encoded])
@@ -286,27 +291,27 @@ defmodule HPAX do
     <<1::1, Types.encode_integer(index, 7)::bitstring>>
   end
 
-  defp encode_literal_header_with_indexing(index, value) when is_integer(index) do
-    [<<1::2, Types.encode_integer(index, 6)::bitstring>>, Types.encode_binary(value, false)]
+  defp encode_literal_header_with_indexing(index, value, huffman) when is_integer(index) do
+    [<<1::2, Types.encode_integer(index, 6)::bitstring>>, Types.encode_binary(value, huffman)]
   end
 
-  defp encode_literal_header_with_indexing(name, value) when is_binary(name) do
-    [<<1::2, 0::6>>, Types.encode_binary(name, false), Types.encode_binary(value, false)]
+  defp encode_literal_header_with_indexing(name, value, huffman) when is_binary(name) do
+    [<<1::2, 0::6>>, Types.encode_binary(name, huffman), Types.encode_binary(value, huffman)]
   end
 
-  defp encode_literal_header_without_indexing(index, value) when is_integer(index) do
-    [<<0::4, Types.encode_integer(index, 4)::bitstring>>, Types.encode_binary(value, false)]
+  defp encode_literal_header_without_indexing(index, value, huffman) when is_integer(index) do
+    [<<0::4, Types.encode_integer(index, 4)::bitstring>>, Types.encode_binary(value, huffman)]
   end
 
-  defp encode_literal_header_without_indexing(name, value) when is_binary(name) do
-    [<<0::4, 0::4>>, Types.encode_binary(name, false), Types.encode_binary(value, false)]
+  defp encode_literal_header_without_indexing(name, value, huffman) when is_binary(name) do
+    [<<0::4, 0::4>>, Types.encode_binary(name, huffman), Types.encode_binary(value, huffman)]
   end
 
-  defp encode_literal_header_never_indexed(index, value) when is_integer(index) do
-    [<<1::4, Types.encode_integer(index, 4)::bitstring>>, Types.encode_binary(value, false)]
+  defp encode_literal_header_never_indexed(index, value, huffman) when is_integer(index) do
+    [<<1::4, Types.encode_integer(index, 4)::bitstring>>, Types.encode_binary(value, huffman)]
   end
 
-  defp encode_literal_header_never_indexed(name, value) when is_binary(name) do
-    [<<1::4, 0::4>>, Types.encode_binary(name, false), Types.encode_binary(value, false)]
+  defp encode_literal_header_never_indexed(name, value, huffman) when is_binary(name) do
+    [<<1::4, 0::4>>, Types.encode_binary(name, huffman), Types.encode_binary(value, huffman)]
   end
 end
