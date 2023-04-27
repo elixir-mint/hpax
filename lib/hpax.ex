@@ -145,7 +145,7 @@ defmodule HPAX do
   end
 
   @doc """
-  Ecnodes a list of headers through the given table, applying the same `action` to all of them.
+  Encodes a list of headers through the given table, applying the same `action` to all of them.
 
   This function is the similar to `encode/2`, but `headers` are `{name, value}` tuples instead,
   and the same `action` is applied to all headers.
