@@ -20,6 +20,14 @@ defmodule HPAX do
   alias HPAX.{Table, Types}
 
   @typedoc """
+  An HPACK table.
+
+  This can be used for encoding or decoding.
+  """
+  @typedoc since: "0.2.0"
+  @opaque table() :: Table.t()
+
+  @typedoc """
   An HPACK header name.
   """
   @type header_name() :: binary()
@@ -36,7 +44,7 @@ defmodule HPAX do
 
   Same as `new/2` with default options.
   """
-  @spec new(non_neg_integer()) :: Table.t()
+  @spec new(non_neg_integer()) :: table()
   def new(max_table_size), do: new(max_table_size, [])
 
   @doc """
@@ -50,7 +58,7 @@ defmodule HPAX do
 
   This function accepts the following `options`:
 
-    * `:huffman_encoding` - (since 0.3.0) `:always` or `:never`. If `:always`,
+    * `:huffman_encoding` - (since 0.2.0) `:always` or `:never`. If `:always`,
       then HPAX will always encode headers using Huffman encoding. If `:never`,
       HPAX will not use any Huffman encoding. Defaults to `:never`.
 
@@ -59,8 +67,8 @@ defmodule HPAX do
       encoding_context = HPAX.new(4096)
 
   """
-  @doc since: "0.3.0"
-  @spec new(non_neg_integer(), [keyword()]) :: Table.t()
+  @doc since: "0.2.0"
+  @spec new(non_neg_integer(), [keyword()]) :: table()
   def new(max_table_size, options)
       when is_integer(max_table_size) and max_table_size >= 0 and is_list(options) do
     options = Keyword.put_new(options, :huffman_encoding, :never)
@@ -82,7 +90,7 @@ defmodule HPAX do
       HPAX.resize(decoding_context, 8192)
 
   """
-  @spec resize(Table.t(), non_neg_integer()) :: Table.t()
+  @spec resize(table(), non_neg_integer()) :: table()
   defdelegate resize(table, new_size), to: Table
 
   @doc """
@@ -100,8 +108,8 @@ defmodule HPAX do
       #=> {:ok, [{":method", "GET"}], decoding_context}
 
   """
-  @spec decode(binary(), Table.t()) ::
-          {:ok, [{header_name(), header_value()}], Table.t()} | {:error, term()}
+  @spec decode(binary(), table()) ::
+          {:ok, [{header_name(), header_value()}], table()} | {:error, term()}
 
   # Dynamic resizes must occur only at the start of a block
   # https://datatracker.ietf.org/doc/html/rfc7541#section-4.2
@@ -137,7 +145,7 @@ defmodule HPAX do
       #=> {iodata, updated_encoding_context}
 
   """
-  @spec encode([header], Table.t()) :: {iodata(), Table.t()}
+  @spec encode([header], table()) :: {iodata(), table()}
         when header: {action, header_name(), header_value()},
              action: :store | :store_name | :no_store | :never_store
   def encode(headers, %Table{} = table) when is_list(headers) do
@@ -159,7 +167,7 @@ defmodule HPAX do
 
   """
   @doc since: "0.2.0"
-  @spec encode(action, [header], Table.t()) :: {iodata(), Table.t()}
+  @spec encode(action, [header], table()) :: {iodata(), table()}
         when action: :store | :store_name | :no_store | :never_store,
              header: {header_name(), header_value()}
   def encode(action, headers, %Table{} = table)
