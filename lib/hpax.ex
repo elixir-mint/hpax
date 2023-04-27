@@ -32,21 +32,45 @@ defmodule HPAX do
   @valid_header_actions [:store, :store_name, :no_store, :never_store]
 
   @doc """
+  Creates a new HPACK table.
+
+  Same as `new/2` with default options.
+  """
+  @spec new(non_neg_integer()) :: Table.t()
+  def new(max_table_size), do: new(max_table_size, [])
+
+  @doc """
   Create a new HPACK table that can be used as encoding or decoding context.
 
   See the "Encoding and decoding contexts" section in the module documentation.
 
   `max_table_size` is the maximum table size (in bytes) for the newly created table.
 
+  ## Options
+
+  This function accepts the following `options`:
+
+    * `:huffman_encoding` - (since 0.3.0) `:always` or `:never`. If `:always`,
+      then HPAX will always encode headers using Huffman encoding. If `:never`,
+      HPAX will not use any Huffman encoding. Defaults to `:never`.
+
   ## Examples
 
       encoding_context = HPAX.new(4096)
 
   """
-  @spec new(non_neg_integer(), [Table.option()]) :: Table.t()
-  def new(max_table_size, options \\ [])
-      when is_integer(max_table_size) and max_table_size >= 0 do
-    Table.new(max_table_size, options)
+  @doc since: "0.3.0"
+  @spec new(non_neg_integer(), [keyword()]) :: Table.t()
+  def new(max_table_size, options)
+      when is_integer(max_table_size) and max_table_size >= 0 and is_list(options) do
+    options = Keyword.put_new(options, :huffman_encoding, :never)
+
+    Enum.each(options, fn
+      {:huffman_encoding, _huffman_encoding} -> :ok
+      {key, _value} -> raise ArgumentError, "unknown option: #{inspect(key)}"
+    end)
+
+    Table.new(max_table_size, Keyword.fetch!(options, :huffman_encoding))
   end
 
   @doc """
@@ -252,7 +276,7 @@ defmodule HPAX do
 
   defp encode_headers([{action, name, value} | rest], table, acc)
        when action in @valid_header_actions and is_binary(name) and is_binary(value) do
-    huffman? = table.huffman == :always
+    huffman? = table.huffman_encoding == :always
 
     {encoded, table} =
       case Table.lookup_by_header(table, name, value) do
@@ -287,27 +311,27 @@ defmodule HPAX do
     <<1::1, Types.encode_integer(index, 7)::bitstring>>
   end
 
-  defp encode_literal_header_with_indexing(index, value, huffman) when is_integer(index) do
-    [<<1::2, Types.encode_integer(index, 6)::bitstring>>, Types.encode_binary(value, huffman)]
+  defp encode_literal_header_with_indexing(index, value, huffman?) when is_integer(index) do
+    [<<1::2, Types.encode_integer(index, 6)::bitstring>>, Types.encode_binary(value, huffman?)]
   end
 
-  defp encode_literal_header_with_indexing(name, value, huffman) when is_binary(name) do
-    [<<1::2, 0::6>>, Types.encode_binary(name, huffman), Types.encode_binary(value, huffman)]
+  defp encode_literal_header_with_indexing(name, value, huffman?) when is_binary(name) do
+    [<<1::2, 0::6>>, Types.encode_binary(name, huffman?), Types.encode_binary(value, huffman?)]
   end
 
-  defp encode_literal_header_without_indexing(index, value, huffman) when is_integer(index) do
-    [<<0::4, Types.encode_integer(index, 4)::bitstring>>, Types.encode_binary(value, huffman)]
+  defp encode_literal_header_without_indexing(index, value, huffman?) when is_integer(index) do
+    [<<0::4, Types.encode_integer(index, 4)::bitstring>>, Types.encode_binary(value, huffman?)]
   end
 
-  defp encode_literal_header_without_indexing(name, value, huffman) when is_binary(name) do
-    [<<0::4, 0::4>>, Types.encode_binary(name, huffman), Types.encode_binary(value, huffman)]
+  defp encode_literal_header_without_indexing(name, value, huffman?) when is_binary(name) do
+    [<<0::4, 0::4>>, Types.encode_binary(name, huffman?), Types.encode_binary(value, huffman?)]
   end
 
-  defp encode_literal_header_never_indexed(index, value, huffman) when is_integer(index) do
-    [<<1::4, Types.encode_integer(index, 4)::bitstring>>, Types.encode_binary(value, huffman)]
+  defp encode_literal_header_never_indexed(index, value, huffman?) when is_integer(index) do
+    [<<1::4, Types.encode_integer(index, 4)::bitstring>>, Types.encode_binary(value, huffman?)]
   end
 
-  defp encode_literal_header_never_indexed(name, value, huffman) when is_binary(name) do
-    [<<1::4, 0::4>>, Types.encode_binary(name, huffman), Types.encode_binary(value, huffman)]
+  defp encode_literal_header_never_indexed(name, value, huffman?) when is_binary(name) do
+    [<<1::4, 0::4>>, Types.encode_binary(name, huffman?), Types.encode_binary(value, huffman?)]
   end
 end

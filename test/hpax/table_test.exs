@@ -5,11 +5,11 @@ defmodule HPAX.TableTest do
   alias HPAX.Table
 
   test "new/1" do
-    assert %Table{} = Table.new(100)
+    assert %Table{} = Table.new(100, :always)
   end
 
   test "adding headers and fetching them by value" do
-    table = Table.new(10_000)
+    table = Table.new(10_000, :always)
 
     # These are in the static table.
     assert {:full, _} = Table.lookup_by_header(table, ":status", "200")
@@ -30,7 +30,7 @@ defmodule HPAX.TableTest do
     dynamic_table_start = length(Table.__static_table__()) + 1
 
     # This fits two headers that have name and value of 4 bytes (4 + 4 + 32, twice).
-    table = Table.new(80)
+    table = Table.new(80, :always)
 
     table = Table.add(table, "aaaa", "AAAA")
     table = Table.add(table, "bbbb", "BBBB")
@@ -50,15 +50,15 @@ defmodule HPAX.TableTest do
 
   describe "looking headers up by index" do
     test "with an index out of bounds" do
-      assert Table.lookup_by_index(Table.new(100), 1000) == :error
+      assert Table.lookup_by_index(Table.new(100, :never), 1000) == :error
     end
 
     test "with an index in the static table" do
-      assert Table.lookup_by_index(Table.new(100), 1) == {:ok, {":authority", nil}}
+      assert Table.lookup_by_index(Table.new(100, :never), 1) == {:ok, {":authority", nil}}
     end
 
     test "with an index in the dynamic table" do
-      table = Table.new(100)
+      table = Table.new(100, :never)
       table = Table.add(table, "my-header", "my-value")
 
       assert Table.lookup_by_index(table, length(Table.__static_table__()) + 1) ==
@@ -68,7 +68,7 @@ defmodule HPAX.TableTest do
 
   property "adding a header and then looking it up always returns the index of that header" do
     check all {name, value} <- {string(0..127, min_length: 1), binary()} do
-      assert %Table{} = table = Table.new(10_000)
+      assert %Table{} = table = Table.new(10_000, :never)
       assert %Table{} = table = Table.add(table, name, value)
       assert {:full, 62} = Table.lookup_by_header(table, name, value)
     end
