@@ -26,7 +26,7 @@ jobs:
       GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
     steps:
-      - uses: actions/checkout@v1
+      - uses: actions/checkout@v3
 
       - name: Install Erlang and Elixir
         uses: erlef/setup-beam@v1
@@ -44,7 +44,7 @@ jobs:
         id: cache-plt
         with:
           path: priv/plts
-          key: ${{ runner.os }}-otp${{ matrix.otp }}-elixir${{ matrix.elixir }}
+          key: ${{ runner.os }}-otp${{ matrix.erlang }}-elixir${{ matrix.elixir }}
 
       # Create PLTs if no cache was found
       - name: Create PLTs
