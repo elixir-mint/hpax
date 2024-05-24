@@ -157,7 +157,7 @@ defmodule HPAX.Table do
   end
 
   def lookup_by_index(%__MODULE__{entries: entries, length: length}, index)
-      when index in @dynamic_table_start..(@dynamic_table_start + length - 1) do
+      when index in @dynamic_table_start..(@dynamic_table_start + length - 1)//1 do
     {:ok, Enum.at(entries, index - @dynamic_table_start)}
   end
 
