@@ -8,7 +8,7 @@ defmodule HPAX.MixProject do
     [
       app: :hpax,
       version: @version,
-      elixir: "~> 1.7",
+      elixir: "~> 1.12",
       start_permanent: Mix.env() == :prod,
       deps: deps(),
 
@@ -36,11 +36,12 @@ defmodule HPAX.MixProject do
 
   defp deps do
     [
-      {:ex_doc, "~> 0.20", only: :dev},
+      {:ex_doc, "~> 0.34", only: :dev},
       {:hpack, ">= 0.0.0", hex: :hpack_erl, only: :test},
-      {:stream_data, "~> 0.5.0", only: [:dev, :test]},
+      {:stream_data, "~> 1.0", only: [:dev, :test]},
       {:dialyxir, "~> 1.0", only: [:dev, :test], runtime: false},
-      {:excoveralls, "~> 0.14", only: :test}
+      {:excoveralls, "~> 0.18", only: :test},
+      {:castore, "~> 1.0", only: :test}
     ]
   end
 

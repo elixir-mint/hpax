@@ -9,17 +9,17 @@ on:
 jobs:
   test:
     name: Test (Elixir ${{ matrix.elixir }}, OTP ${{ matrix.erlang }})
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     strategy:
       fail-fast: false
       matrix:
         include:
-          - erlang: "25.3"
-            elixir: "1.14.2"
+          - erlang: "27.0"
+            elixir: "1.17"
             lint: true
             coverage: true
-          - erlang: "20.3"
-            elixir: "1.7.4"
+          - erlang: "23"
+            elixir: "1.12"
 
     env:
       MIX_ENV: test
@@ -35,7 +35,7 @@ jobs:
           elixir-version: ${{ matrix.elixir }}
 
       - name: Install dependencies
-        run: mix deps.get --only test, deps.compile
+        run: mix deps.get --only test
 
       # Don't cache PLTs based on mix.lock hash, as Dialyzer can incrementally update even old ones
       # Cache key based on Elixir & Erlang version (also useful when running in matrix)
