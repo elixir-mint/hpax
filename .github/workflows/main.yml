@@ -18,7 +18,7 @@ jobs:
             elixir: "1.17"
             lint: true
             coverage: true
-          - erlang: "23"
+          - erlang: "23.3"
             elixir: "1.12"
 
     env:
