@@ -9,38 +9,40 @@ on:
 jobs:
   test:
     name: Test (Elixir ${{ matrix.elixir }}, OTP ${{ matrix.erlang }})
-    runs-on: ubuntu-20.04
+    runs-on: "${{ matrix.os }}"
     strategy:
       fail-fast: false
       matrix:
         include:
-          - erlang: "25.3"
-            elixir: "1.14.2"
+          - erlang: "27.0"
+            elixir: "1.17"
             lint: true
             coverage: true
-          - erlang: "20.3"
-            elixir: "1.7.4"
+            os: ubuntu-latest
+          - erlang: "23"
+            elixir: "1.12"
+            os: ubuntu-20.04
 
     env:
       MIX_ENV: test
       GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
       - name: Install Erlang and Elixir
         uses: erlef/setup-beam@v1
         with:
-          otp-version: ${{ matrix.erlang }}
-          elixir-version: ${{ matrix.elixir }}
+          otp-version: "${{ matrix.erlang }}"
+          elixir-version: "${{ matrix.elixir }}"
 
       - name: Install dependencies
-        run: mix deps.get --only test, deps.compile
+        run: mix deps.get --only test
 
       # Don't cache PLTs based on mix.lock hash, as Dialyzer can incrementally update even old ones
       # Cache key based on Elixir & Erlang version (also useful when running in matrix)
       - name: Cache Dialyzer's PLT
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         id: cache-plt
         with:
           path: priv/plts
