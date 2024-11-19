@@ -127,10 +127,10 @@ defmodule HPAX do
   def decode(<<0b001::3, rest::bitstring>>, %Table{} = table) do
     {new_max_size, rest} = decode_integer(rest, 5)
 
-    # Dynamic resizes must be less than max table size
+    # Dynamic resizes must be less than protocol max table size
     # https://datatracker.ietf.org/doc/html/rfc7541#section-6.3
-    if new_max_size <= table.max_table_size do
-      decode(rest, Table.resize(table, new_max_size))
+    if new_max_size <= table.protocol_max_table_size do
+      decode(rest, Table.dynamic_resize(table, new_max_size))
     else
       {:error, :protocol_error}
     end

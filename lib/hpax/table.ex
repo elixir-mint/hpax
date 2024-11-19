@@ -3,6 +3,7 @@ defmodule HPAX.Table do
 
   @enforce_keys [:max_table_size, :huffman_encoding]
   defstruct [
+    :protocol_max_table_size,
     :max_table_size,
     :huffman_encoding,
     entries: [],
@@ -14,6 +15,7 @@ defmodule HPAX.Table do
   @type huffman_encoding() :: :always | :never
 
   @type t() :: %__MODULE__{
+          protocol_max_table_size: non_neg_integer(),
           max_table_size: non_neg_integer(),
           huffman_encoding: huffman_encoding(),
           entries: [{binary(), binary()}],
@@ -96,10 +98,14 @@ defmodule HPAX.Table do
   http://httpwg.org/specs/rfc7541.html#maximum.table.size.
   """
   @spec new(non_neg_integer(), huffman_encoding()) :: t()
-  def new(max_table_size, huffman_encoding)
-      when is_integer(max_table_size) and max_table_size >= 0 and
+  def new(protocol_max_table_size, huffman_encoding)
+      when is_integer(protocol_max_table_size) and protocol_max_table_size >= 0 and
              huffman_encoding in [:always, :never] do
-    %__MODULE__{max_table_size: max_table_size, huffman_encoding: huffman_encoding}
+    %__MODULE__{
+      protocol_max_table_size: protocol_max_table_size,
+      max_table_size: protocol_max_table_size,
+      huffman_encoding: huffman_encoding
+    }
   end
 
   @doc """
@@ -244,7 +250,7 @@ defmodule HPAX.Table do
   end
 
   @doc """
-  Changes the table's maximum size, possibly evicting entries as needed to satisfy.
+  Changes the table's protocol negotiated maximum size, possibly evicting entries as needed to satisfy.
 
   If the indicated size is less than the table's current max size, entries
   will be evicted as needed to fit within the specified size, and the table's
@@ -254,18 +260,38 @@ defmodule HPAX.Table do
 
   If the indicated size is greater than or equal to the table's current max size, no entries are evicted
   and the table's maximum size changes to the specified value.
+
+  In all cases, the table's protocol_max_table_size is updated accordingly
   """
   @spec resize(t(), non_neg_integer()) :: t()
-  def resize(%__MODULE__{max_table_size: max_table_size} = table, new_max_table_size)
-      when new_max_table_size >= max_table_size do
-    %{table | max_table_size: new_max_table_size}
+  def resize(%__MODULE__{max_table_size: max_table_size} = table, new_protocol_max_table_size)
+      when new_protocol_max_table_size >= max_table_size do
+    %{
+      table
+      | protocol_max_table_size: new_protocol_max_table_size,
+        max_table_size: new_protocol_max_table_size
+    }
   end
 
-  def resize(%__MODULE__{} = table, new_max_size) do
+  def resize(%__MODULE__{} = table, new_protocol_max_table_size) do
+    pending_minimum_resize =
+      case table.pending_minimum_resize do
+        nil -> new_protocol_max_table_size
+        current -> min(current, new_protocol_max_table_size)
+      end
+
     %{
-      evict_to_size(table, new_max_size)
-      | max_table_size: new_max_size,
-        pending_minimum_resize: min(table.pending_minimum_resize || new_max_size, new_max_size)
+      evict_to_size(table, new_protocol_max_table_size)
+      | protocol_max_table_size: new_protocol_max_table_size,
+        max_table_size: new_protocol_max_table_size,
+        pending_minimum_resize: pending_minimum_resize
+    }
+  end
+
+  def dynamic_resize(%__MODULE__{} = table, new_max_table_size) do
+    %{
+      evict_to_size(table, new_max_table_size)
+      | max_table_size: new_max_table_size
     }
   end
 
