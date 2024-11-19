@@ -26,7 +26,7 @@ defmodule HPAX.TableTest do
     assert {:name, _} = Table.lookup_by_header(table, ":my-header", nil)
   end
 
-  test "resizing" do
+  test "LRU eviction" do
     dynamic_table_start = length(Table.__static_table__()) + 1
 
     # This fits two headers that have name and value of 4 bytes (4 + 4 + 32, twice).
@@ -42,10 +42,6 @@ defmodule HPAX.TableTest do
     assert Table.lookup_by_index(table, dynamic_table_start) == {:ok, {"cccc", "CCCC"}}
     assert Table.lookup_by_index(table, dynamic_table_start + 1) == {:ok, {"bbbb", "BBBB"}}
     assert Table.lookup_by_index(table, dynamic_table_start + 2) == :error
-
-    # If we resize so that no headers fit, all headers are removed.
-    table = Table.resize(table, 30)
-    assert Table.lookup_by_index(table, dynamic_table_start) == :error
   end
 
   describe "looking headers up by index" do
@@ -71,6 +67,25 @@ defmodule HPAX.TableTest do
       assert %Table{} = table = Table.new(10_000, :never)
       assert %Table{} = table = Table.add(table, name, value)
       assert {:full, 62} = Table.lookup_by_header(table, name, value)
+    end
+  end
+
+  describe "resizing" do
+    test "increasing the max table size" do
+      table = Table.new(4096, :never)
+      table = Table.add(table, "aaaa", "AAAA")
+      table = Table.resize(table, 8192)
+      assert table.size == 40
+      assert table.max_table_size == 8192
+    end
+
+    test "decreasing the max table size" do
+      table = Table.new(4096, :never)
+      table = Table.add(table, "aaaa", "AAAA")
+      table = Table.add(table, "bbbb", "BBBB")
+      table = Table.resize(table, 40)
+      assert table.size == 40
+      assert table.max_table_size == 40
     end
   end
 end

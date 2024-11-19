@@ -124,7 +124,7 @@ defmodule HPAX.Table do
 
       size + entry_size > max_table_size ->
         table
-        |> resize(max_table_size - entry_size)
+        |> evict_to_size(max_table_size - entry_size)
         |> add_header(name, value, entry_size)
 
       true ->
@@ -242,13 +242,30 @@ defmodule HPAX.Table do
   end
 
   @doc """
-  Resizes the table.
+  Changes the table's maximum size, possibly evicting entries as needed to satisfy.
 
-  If the existing entries do not fit in the new table size the oldest entries are evicted.
+  If the indicated size is less than the table's current max size, entries
+  will be evicted as needed to fit within the specified size, and the table's
+  maximum size will be decreased to the specified value.
+
+  If the indicated size is greater than or equal to the table's current max size, no entries are evicted
+  and the table's maximum size changes to the specified value.
   """
   @spec resize(t(), non_neg_integer()) :: t()
-  def resize(%__MODULE__{entries: entries, size: size} = table, new_size) do
-    {new_entries_reversed, new_size} = evict_towards_size(Enum.reverse(entries), size, new_size)
+  def resize(%__MODULE__{max_table_size: max_table_size} = table, new_max_table_size)
+      when new_max_table_size >= max_table_size do
+    %{table | max_table_size: new_max_table_size}
+  end
+
+  def resize(%__MODULE__{} = table, new_max_size) do
+    %{evict_to_size(table, new_max_size) | max_table_size: new_max_size}
+  end
+
+  # Removes records as necessary to have the total size of entries within the table be less than
+  # or equal to the specified value. Does not change the table's max size.
+  defp evict_to_size(%__MODULE__{entries: entries, size: size} = table, new_size) do
+    {new_entries_reversed, new_size} =
+      evict_towards_size(Enum.reverse(entries), size, new_size)
 
     %{
       table
