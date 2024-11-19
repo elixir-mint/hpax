@@ -88,7 +88,9 @@ defmodule HPAX do
 
   If the indicated size is less than the table's current size, entries
   will be evicted as needed to fit within the specified size, and the table's
-  maximum size will be decreased to the specified value.
+  maximum size will be decreased to the specified value. A flag will also be
+  set which will enqueue a 'dynamic table size update' command to be prefixed
+  to the next block encoded with this table, per RFC9113§4.3.1.
 
   If the indicated size is greater than or equal to the table's current max size, no entries are evicted
   and the table's maximum size changes to the specified value.
@@ -158,7 +160,9 @@ defmodule HPAX do
         when header: {action, header_name(), header_value()},
              action: :store | :store_name | :no_store | :never_store
   def encode(headers, %Table{} = table) when is_list(headers) do
-    encode_headers(headers, table, _acc = [])
+    {table, pending_resizes} = Table.pending_resizes(table)
+    acc = pending_resizes |> Enum.map(&[<<0b001::3, Types.encode_integer(&1, 5)::bitstring>>])
+    encode_headers(headers, table, acc)
   end
 
   @doc """

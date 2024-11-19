@@ -7,7 +7,8 @@ defmodule HPAX.Table do
     :huffman_encoding,
     entries: [],
     size: 0,
-    length: 0
+    length: 0,
+    pending_minimum_resize: nil
   ]
 
   @type huffman_encoding() :: :always | :never
@@ -17,7 +18,8 @@ defmodule HPAX.Table do
           huffman_encoding: huffman_encoding(),
           entries: [{binary(), binary()}],
           size: non_neg_integer(),
-          length: non_neg_integer()
+          length: non_neg_integer(),
+          pending_minimum_resize: non_neg_integer() | nil
         }
 
   @static_table [
@@ -246,7 +248,9 @@ defmodule HPAX.Table do
 
   If the indicated size is less than the table's current max size, entries
   will be evicted as needed to fit within the specified size, and the table's
-  maximum size will be decreased to the specified value.
+  maximum size will be decreased to the specified value. An will also be
+  set which will enqueue a 'dynamic table size update' command to be prefixed
+  to the next block encoded with this table, per RFC9113§4.3.1.
 
   If the indicated size is greater than or equal to the table's current max size, no entries are evicted
   and the table's maximum size changes to the specified value.
@@ -258,7 +262,31 @@ defmodule HPAX.Table do
   end
 
   def resize(%__MODULE__{} = table, new_max_size) do
-    %{evict_to_size(table, new_max_size) | max_table_size: new_max_size}
+    %{
+      evict_to_size(table, new_max_size)
+      | max_table_size: new_max_size,
+        pending_minimum_resize: min(table.pending_minimum_resize || new_max_size, new_max_size)
+    }
+  end
+
+  @doc """
+  Returns (and clears) any pending resize events on the table which will need to be signalled to
+  the decoder via dynamic table size update messages. Intended to be called at the start of any
+  block encode to prepend such dynamic table size update(s) as needed. The value of
+  `pending_minimum_resize` indicates the smallest maximum size of this table which has not yet
+  been signalled to the decoder, and is always included in the list returned if it is set.
+  Additionally, if the current max table size is larger than this value, it is also included int
+  the list, per https://www.rfc-editor.org/rfc/rfc7541#section-4.2
+  """
+  def pending_resizes(%{pending_minimum_resize: nil} = table), do: {table, []}
+
+  def pending_resizes(table) do
+    pending_resizes =
+      if table.max_table_size > table.pending_minimum_resize,
+        do: [table.pending_minimum_resize, table.max_table_size],
+        else: [table.pending_minimum_resize]
+
+    {%{table | pending_minimum_resize: nil}, pending_resizes}
   end
 
   # Removes records as necessary to have the total size of entries within the table be less than
