@@ -261,12 +261,12 @@ defmodule HPAX.Table do
   If the indicated size is greater than or equal to the table's current max size, no entries are evicted
   and the table's maximum size changes to the specified value.
 
-  In all cases, the table's protocol_max_table_size is updated accordingly
+  In all cases, the table's `:protocol_max_table_size` is updated accordingly
   """
   @spec resize(t(), non_neg_integer()) :: t()
   def resize(%__MODULE__{max_table_size: max_table_size} = table, new_protocol_max_table_size)
       when new_protocol_max_table_size >= max_table_size do
-    %{
+    %__MODULE__{
       table
       | protocol_max_table_size: new_protocol_max_table_size,
         max_table_size: new_protocol_max_table_size
@@ -280,7 +280,7 @@ defmodule HPAX.Table do
         current -> min(current, new_protocol_max_table_size)
       end
 
-    %{
+    %__MODULE__{
       evict_to_size(table, new_protocol_max_table_size)
       | protocol_max_table_size: new_protocol_max_table_size,
         max_table_size: new_protocol_max_table_size,
@@ -289,7 +289,7 @@ defmodule HPAX.Table do
   end
 
   def dynamic_resize(%__MODULE__{} = table, new_max_table_size) do
-    %{
+    %__MODULE__{
       evict_to_size(table, new_max_table_size)
       | max_table_size: new_max_table_size
     }
@@ -304,15 +304,15 @@ defmodule HPAX.Table do
   Additionally, if the current max table size is larger than this value, it is also included int
   the list, per https://www.rfc-editor.org/rfc/rfc7541#section-4.2
   """
-  def pending_resizes(%{pending_minimum_resize: nil} = table), do: {table, []}
+  def pop_pending_resizes(%{pending_minimum_resize: nil} = table), do: {table, []}
 
-  def pending_resizes(table) do
+  def pop_pending_resizes(table) do
     pending_resizes =
       if table.max_table_size > table.pending_minimum_resize,
         do: [table.pending_minimum_resize, table.max_table_size],
         else: [table.pending_minimum_resize]
 
-    {%{table | pending_minimum_resize: nil}, pending_resizes}
+    {%__MODULE__{table | pending_minimum_resize: nil}, pending_resizes}
   end
 
   # Removes records as necessary to have the total size of entries within the table be less than
@@ -321,7 +321,7 @@ defmodule HPAX.Table do
     {new_entries_reversed, new_size} =
       evict_towards_size(Enum.reverse(entries), size, new_size)
 
-    %{
+    %__MODULE__{
       table
       | entries: Enum.reverse(new_entries_reversed),
         size: new_size,
