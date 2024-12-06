@@ -3,21 +3,25 @@ defmodule HPAX.Table do
 
   @enforce_keys [:max_table_size, :huffman_encoding]
   defstruct [
+    :protocol_max_table_size,
     :max_table_size,
     :huffman_encoding,
     entries: [],
     size: 0,
-    length: 0
+    length: 0,
+    pending_minimum_resize: nil
   ]
 
   @type huffman_encoding() :: :always | :never
 
   @type t() :: %__MODULE__{
+          protocol_max_table_size: non_neg_integer(),
           max_table_size: non_neg_integer(),
           huffman_encoding: huffman_encoding(),
           entries: [{binary(), binary()}],
           size: non_neg_integer(),
-          length: non_neg_integer()
+          length: non_neg_integer(),
+          pending_minimum_resize: non_neg_integer() | nil
         }
 
   @static_table [
@@ -94,10 +98,14 @@ defmodule HPAX.Table do
   http://httpwg.org/specs/rfc7541.html#maximum.table.size.
   """
   @spec new(non_neg_integer(), huffman_encoding()) :: t()
-  def new(max_table_size, huffman_encoding)
-      when is_integer(max_table_size) and max_table_size >= 0 and
+  def new(protocol_max_table_size, huffman_encoding)
+      when is_integer(protocol_max_table_size) and protocol_max_table_size >= 0 and
              huffman_encoding in [:always, :never] do
-    %__MODULE__{max_table_size: max_table_size, huffman_encoding: huffman_encoding}
+    %__MODULE__{
+      protocol_max_table_size: protocol_max_table_size,
+      max_table_size: protocol_max_table_size,
+      huffman_encoding: huffman_encoding
+    }
   end
 
   @doc """
@@ -124,7 +132,7 @@ defmodule HPAX.Table do
 
       size + entry_size > max_table_size ->
         table
-        |> resize(max_table_size - entry_size)
+        |> evict_to_size(max_table_size - entry_size)
         |> add_header(name, value, entry_size)
 
       true ->
@@ -242,15 +250,78 @@ defmodule HPAX.Table do
   end
 
   @doc """
-  Resizes the table.
+  Changes the table's protocol negotiated maximum size, possibly evicting entries as needed to satisfy.
 
-  If the existing entries do not fit in the new table size the oldest entries are evicted.
+  If the indicated size is less than the table's current max size, entries
+  will be evicted as needed to fit within the specified size, and the table's
+  maximum size will be decreased to the specified value. An will also be
+  set which will enqueue a 'dynamic table size update' command to be prefixed
+  to the next block encoded with this table, per RFC9113§4.3.1.
+
+  If the indicated size is greater than or equal to the table's current max size, no entries are evicted
+  and the table's maximum size changes to the specified value.
+
+  In all cases, the table's `:protocol_max_table_size` is updated accordingly
   """
   @spec resize(t(), non_neg_integer()) :: t()
-  def resize(%__MODULE__{entries: entries, size: size} = table, new_size) do
-    {new_entries_reversed, new_size} = evict_towards_size(Enum.reverse(entries), size, new_size)
+  def resize(%__MODULE__{max_table_size: max_table_size} = table, new_protocol_max_table_size)
+      when new_protocol_max_table_size >= max_table_size do
+    %__MODULE__{
+      table
+      | protocol_max_table_size: new_protocol_max_table_size,
+        max_table_size: new_protocol_max_table_size
+    }
+  end
 
-    %{
+  def resize(%__MODULE__{} = table, new_protocol_max_table_size) do
+    pending_minimum_resize =
+      case table.pending_minimum_resize do
+        nil -> new_protocol_max_table_size
+        current -> min(current, new_protocol_max_table_size)
+      end
+
+    %__MODULE__{
+      evict_to_size(table, new_protocol_max_table_size)
+      | protocol_max_table_size: new_protocol_max_table_size,
+        max_table_size: new_protocol_max_table_size,
+        pending_minimum_resize: pending_minimum_resize
+    }
+  end
+
+  def dynamic_resize(%__MODULE__{} = table, new_max_table_size) do
+    %__MODULE__{
+      evict_to_size(table, new_max_table_size)
+      | max_table_size: new_max_table_size
+    }
+  end
+
+  @doc """
+  Returns (and clears) any pending resize events on the table which will need to be signalled to
+  the decoder via dynamic table size update messages. Intended to be called at the start of any
+  block encode to prepend such dynamic table size update(s) as needed. The value of
+  `pending_minimum_resize` indicates the smallest maximum size of this table which has not yet
+  been signalled to the decoder, and is always included in the list returned if it is set.
+  Additionally, if the current max table size is larger than this value, it is also included int
+  the list, per https://www.rfc-editor.org/rfc/rfc7541#section-4.2
+  """
+  def pop_pending_resizes(%{pending_minimum_resize: nil} = table), do: {table, []}
+
+  def pop_pending_resizes(table) do
+    pending_resizes =
+      if table.max_table_size > table.pending_minimum_resize,
+        do: [table.pending_minimum_resize, table.max_table_size],
+        else: [table.pending_minimum_resize]
+
+    {%__MODULE__{table | pending_minimum_resize: nil}, pending_resizes}
+  end
+
+  # Removes records as necessary to have the total size of entries within the table be less than
+  # or equal to the specified value. Does not change the table's max size.
+  defp evict_to_size(%__MODULE__{entries: entries, size: size} = table, new_size) do
+    {new_entries_reversed, new_size} =
+      evict_towards_size(Enum.reverse(entries), size, new_size)
+
+    %__MODULE__{
       table
       | entries: Enum.reverse(new_entries_reversed),
         size: new_size,

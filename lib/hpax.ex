@@ -82,7 +82,20 @@ defmodule HPAX do
   end
 
   @doc """
-  Resizes the given table to the given size.
+  Resizes the given table to the given maximum size.
+
+  This is intended for use where the overlying protocol has signaled a change to the table's
+  maximum size, such as when an HTTP/2 `SETTINGS` frame is received.
+
+  If the indicated size is less than the table's current size, entries
+  will be evicted as needed to fit within the specified size, and the table's
+  maximum size will be decreased to the specified value. A flag will also be
+  set which will enqueue a "dynamic table size update" command to be prefixed
+  to the next block encoded with this table, per
+  [RFC9113§4.3.1](https://www.rfc-editor.org/rfc/rfc9113.html#section-4.3.1).
+
+  If the indicated size is greater than or equal to the table's current max size, no entries are evicted
+  and the table's maximum size changes to the specified value.
 
   ## Examples
 
@@ -91,7 +104,7 @@ defmodule HPAX do
 
   """
   @spec resize(table(), non_neg_integer()) :: table()
-  defdelegate resize(table, new_size), to: Table
+  defdelegate resize(table, new_max_size), to: Table
 
   @doc """
   Decodes a header block fragment (HBF) through a given table.
@@ -114,12 +127,12 @@ defmodule HPAX do
   # Dynamic resizes must occur only at the start of a block
   # https://datatracker.ietf.org/doc/html/rfc7541#section-4.2
   def decode(<<0b001::3, rest::bitstring>>, %Table{} = table) do
-    {new_size, rest} = decode_integer(rest, 5)
+    {new_max_size, rest} = decode_integer(rest, 5)
 
-    # Dynamic resizes must be less than max table size
+    # Dynamic resizes must be less than protocol max table size
     # https://datatracker.ietf.org/doc/html/rfc7541#section-6.3
-    if new_size <= table.max_table_size do
-      decode(rest, Table.resize(table, new_size))
+    if new_max_size <= table.protocol_max_table_size do
+      decode(rest, Table.dynamic_resize(table, new_max_size))
     else
       {:error, :protocol_error}
     end
@@ -149,7 +162,9 @@ defmodule HPAX do
         when header: {action, header_name(), header_value()},
              action: :store | :store_name | :no_store | :never_store
   def encode(headers, %Table{} = table) when is_list(headers) do
-    encode_headers(headers, table, _acc = [])
+    {table, pending_resizes} = Table.pop_pending_resizes(table)
+    acc = Enum.map(pending_resizes, &[<<0b001::3, Types.encode_integer(&1, 5)::bitstring>>])
+    encode_headers(headers, table, acc)
   end
 
   @doc """

@@ -107,28 +107,62 @@ defmodule HPAXTest do
     end
   end
 
+  property "encode/3 prepends dynamic resizes at the start of a block" do
+    enc_table = HPAX.new(20_000)
+    # Start with a non-empty decode table
+    dec_table = HPAX.new(20_000)
+
+    # Put a record in both to prime the pump. The table sizes should match
+    {encoded, enc_table} = HPAX.encode([{:store, "bogus", "BOGUS"}], enc_table)
+    encoded = IO.iodata_to_binary(encoded)
+    assert {:ok, _decoded, dec_table} = HPAX.decode(encoded, dec_table)
+    assert dec_table.size == enc_table.size
+    assert enc_table.max_table_size == 20_000
+    assert dec_table.max_table_size == 20_000
+
+    # Encode a record after resizing the table. We expect a dynamic resize to be
+    # encoded and the for two table sizes to be identical after decoding
+    enc_table = HPAX.resize(enc_table, 0)
+    enc_table = HPAX.resize(enc_table, 1234)
+    {encoded, enc_table} = HPAX.encode([{:store, "lame", "LAME"}], enc_table)
+    encoded = IO.iodata_to_binary(encoded)
+
+    # Ensure that we see two resizes in order
+    assert <<0b001::3, rest::bitstring>> = encoded
+    assert {:ok, 0, rest} = HPAX.Types.decode_integer(rest, 5)
+    assert <<0b001::3, rest::bitstring>> = rest
+    assert {:ok, 1234, _rest} = HPAX.Types.decode_integer(rest, 5)
+
+    # Finally, ensure that the decoder makes proper sense of this encoding
+    assert {:ok, _decoded, dec_table} = HPAX.decode(encoded, dec_table)
+    assert dec_table.size == enc_table.size
+    assert enc_table.max_table_size == 1234
+    assert dec_table.max_table_size == 1234
+  end
+
   # https://datatracker.ietf.org/doc/html/rfc7541#section-4.2
   property "decode/2 accepts dynamic resizes at the start of a block" do
     enc_table = HPAX.new(20_000)
     # Start with a non-empty decode table
     dec_table = HPAX.new(20_000)
-    {encoded, _enc_table} = HPAX.encode([{:store, "bogus", "BOGUS"}], dec_table)
+
+    # Put a record in both to prime the pump. The table sizes should match
+    {encoded, enc_table} = HPAX.encode([{:store, "bogus", "BOGUS"}], enc_table)
     encoded = IO.iodata_to_binary(encoded)
     assert {:ok, _decoded, dec_table} = HPAX.decode(encoded, dec_table)
-    assert dec_table.size > 0
+    assert dec_table.size == enc_table.size
+    assert enc_table.max_table_size == 20_000
+    assert dec_table.max_table_size == 20_000
 
-    check all headers_to_encode <- list_of(header_with_store(), min_length: 1) do
-      assert {encoded, enc_table} = HPAX.encode(headers_to_encode, enc_table)
-      encoded = IO.iodata_to_binary(encoded)
-      assert {:ok, _decoded, new_dec_table} = HPAX.decode(encoded, dec_table)
-      assert new_dec_table.size > enc_table.size
-
-      # Now prepend a table zeroing to the beginning and ensure that we are exactly
-      # the same size as the encode table
-      encoded = <<0b001::3, 0::5>> <> encoded
-      assert {:ok, _decoded, new_dec_table} = HPAX.decode(encoded, dec_table)
-      assert new_dec_table.size == enc_table.size
-    end
+    # Encode a record but prepend a resize to it. The decode side will now be
+    # smaller since it only contains the newly added record
+    old_enc_table_size = enc_table.size
+    {encoded, _enc_table} = HPAX.encode([{:store, "lame", "LAME"}], dec_table)
+    encoded = <<0b001::3, 0::5>> <> IO.iodata_to_binary(encoded)
+    assert {:ok, _decoded, dec_table} = HPAX.decode(encoded, dec_table)
+    assert dec_table.size == enc_table.size - old_enc_table_size
+    assert enc_table.max_table_size == 20_000
+    assert dec_table.max_table_size == 0
   end
 
   # https://datatracker.ietf.org/doc/html/rfc7541#section-4.2
