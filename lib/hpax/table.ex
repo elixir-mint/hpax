@@ -264,15 +264,6 @@ defmodule HPAX.Table do
   In all cases, the table's `:protocol_max_table_size` is updated accordingly
   """
   @spec resize(t(), non_neg_integer()) :: t()
-  def resize(%__MODULE__{max_table_size: max_table_size} = table, new_protocol_max_table_size)
-      when new_protocol_max_table_size >= max_table_size do
-    %__MODULE__{
-      table
-      | protocol_max_table_size: new_protocol_max_table_size,
-        max_table_size: new_protocol_max_table_size
-    }
-  end
-
   def resize(%__MODULE__{} = table, new_protocol_max_table_size) do
     pending_minimum_resize =
       case table.pending_minimum_resize do
@@ -280,8 +271,15 @@ defmodule HPAX.Table do
         current -> min(current, new_protocol_max_table_size)
       end
 
+    table =
+      if new_protocol_max_table_size < table.size do
+        evict_to_size(table, new_protocol_max_table_size)
+      else
+        table
+      end
+
     %__MODULE__{
-      evict_to_size(table, new_protocol_max_table_size)
+      table
       | protocol_max_table_size: new_protocol_max_table_size,
         max_table_size: new_protocol_max_table_size,
         pending_minimum_resize: pending_minimum_resize
