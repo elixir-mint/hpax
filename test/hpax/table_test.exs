@@ -70,7 +70,7 @@ defmodule HPAX.TableTest do
     end
   end
 
-  describe "resizing" do
+  describe "resize/2" do
     test "increasing the protocol max table size" do
       table = Table.new(4096, :never)
       table = Table.add(table, "aaaa", "AAAA")
@@ -80,25 +80,44 @@ defmodule HPAX.TableTest do
       assert table.protocol_max_table_size == 8192
     end
 
-    test "decreasing the protocol max table size not below the max table size" do
+    test "decreasing the protocol max table size but above table size" do
       table = Table.new(4096, :never)
       table = Table.add(table, "aaaa", "AAAA")
-      table = Table.add(table, "bbbb", "BBBB")
-      table = Table.dynamic_resize(table, 2048)
-      table = Table.resize(table, 6000)
+      table = Table.resize(table, 2048)
       assert table.size == 40
-      assert table.max_table_size == 6000
-      assert table.protocol_max_table_size == 6000
+      assert table.max_table_size == 2048
+      assert table.protocol_max_table_size == 2048
     end
 
-    test "decreasing the protocol max table size below the max table size" do
+    test "decreasing the protocol max table size below current size should evict" do
       table = Table.new(4096, :never)
       table = Table.add(table, "aaaa", "AAAA")
       table = Table.add(table, "bbbb", "BBBB")
-      table = Table.resize(table, 40)
+      table = Table.resize(table, 60)
       assert table.size == 40
-      assert table.max_table_size == 40
-      assert table.protocol_max_table_size == 40
+      assert table.max_table_size == 60
+      assert table.protocol_max_table_size == 60
+    end
+  end
+
+  describe "dynamic_resize/2" do
+    test "decreasing the max table size but above table size" do
+      table = Table.new(4096, :never)
+      table = Table.add(table, "aaaa", "AAAA")
+      table = Table.dynamic_resize(table, 2048)
+      assert table.size == 40
+      assert table.max_table_size == 2048
+      assert table.protocol_max_table_size == 4096
+    end
+
+    test "decreasing the protocol max table size below current size should evict" do
+      table = Table.new(4096, :never)
+      table = Table.add(table, "aaaa", "AAAA")
+      table = Table.add(table, "bbbb", "BBBB")
+      table = Table.dynamic_resize(table, 60)
+      assert table.size == 40
+      assert table.max_table_size == 60
+      assert table.protocol_max_table_size == 4096
     end
   end
 end

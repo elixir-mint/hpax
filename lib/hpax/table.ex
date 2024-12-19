@@ -317,6 +317,8 @@ defmodule HPAX.Table do
 
   # Removes records as necessary to have the total size of entries within the table be less than
   # or equal to the specified value. Does not change the table's max size.
+  defp evict_to_size(%__MODULE__{size: size} = table, new_size) when size <= new_size, do: table
+
   defp evict_to_size(%__MODULE__{entries: entries, size: size} = table, new_size) do
     {new_entries_reversed, new_size} =
       evict_towards_size(Enum.reverse(entries), size, new_size)
