@@ -109,7 +109,6 @@ defmodule HPAXTest do
 
   property "encode/3 prepends dynamic resizes at the start of a block" do
     enc_table = HPAX.new(20_000)
-    # Start with a non-empty decode table
     dec_table = HPAX.new(20_000)
 
     # Put a record in both to prime the pump. The table sizes should match
@@ -120,14 +119,45 @@ defmodule HPAXTest do
     assert enc_table.max_table_size == 20_000
     assert dec_table.max_table_size == 20_000
 
-    # Encode a record after resizing the table. We expect a dynamic resize to be
-    # encoded and the for two table sizes to be identical after decoding
-    enc_table = HPAX.resize(enc_table, 0)
-    enc_table = HPAX.resize(enc_table, 1234)
+    # Scenario 1: Simulate the decoder growing the table via settings
+
+    # First, the decoder resizes its table to some maximum size
+    dec_table = HPAX.resize(dec_table, 40_000)
+
+    # It then communicates that size to the encoder, who chooses a smaller size
+    enc_table = HPAX.resize(enc_table, 30_000)
+
+    # Now, encode a header
     {encoded, enc_table} = HPAX.encode([{:store, "lame", "LAME"}], enc_table)
     encoded = IO.iodata_to_binary(encoded)
 
-    # Ensure that we see two resizes in order
+    # Ensure that we encoded a resize on the wire
+    assert <<0b001::3, rest::bitstring>> = encoded
+    assert {:ok, 30_000, _rest} = HPAX.Types.decode_integer(rest, 5)
+
+    # Finally, ensure that the decoder makes proper sense of this encoding and that it resizes
+    # back down to the size chosen by the encoder
+    assert {:ok, _decoded, dec_table} = HPAX.decode(encoded, dec_table)
+    assert dec_table.size == enc_table.size
+    assert enc_table.max_table_size == 30_000
+    assert dec_table.max_table_size == 30_000
+
+    # Scenario 2: Simulate the decoder shrinking the table ia settings
+
+    # First, the decoder resizes its table to some maximum size
+    dec_table = HPAX.resize(dec_table, 10_000)
+
+    # It then communicates that size to the encoder, who chooses a smaller size
+    enc_table = HPAX.resize(enc_table, 0)
+
+    # It then changes its mind and goes back up to a size still smaller than the decoder's choice
+    enc_table = HPAX.resize(enc_table, 1234)
+
+    # Now, encode a header
+    {encoded, enc_table} = HPAX.encode([{:store, "lame", "LAME"}], enc_table)
+    encoded = IO.iodata_to_binary(encoded)
+
+    # Ensure that we encoded two resizes in order on the wire
     assert <<0b001::3, rest::bitstring>> = encoded
     assert {:ok, 0, rest} = HPAX.Types.decode_integer(rest, 5)
     assert <<0b001::3, rest::bitstring>> = rest

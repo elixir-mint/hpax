@@ -264,15 +264,6 @@ defmodule HPAX.Table do
   In all cases, the table's `:protocol_max_table_size` is updated accordingly
   """
   @spec resize(t(), non_neg_integer()) :: t()
-  def resize(%__MODULE__{max_table_size: max_table_size} = table, new_protocol_max_table_size)
-      when new_protocol_max_table_size >= max_table_size do
-    %__MODULE__{
-      table
-      | protocol_max_table_size: new_protocol_max_table_size,
-        max_table_size: new_protocol_max_table_size
-    }
-  end
-
   def resize(%__MODULE__{} = table, new_protocol_max_table_size) do
     pending_minimum_resize =
       case table.pending_minimum_resize do
@@ -317,6 +308,8 @@ defmodule HPAX.Table do
 
   # Removes records as necessary to have the total size of entries within the table be less than
   # or equal to the specified value. Does not change the table's max size.
+  defp evict_to_size(%__MODULE__{size: size} = table, new_size) when size <= new_size, do: table
+
   defp evict_to_size(%__MODULE__{entries: entries, size: size} = table, new_size) do
     {new_entries_reversed, new_size} =
       evict_towards_size(Enum.reverse(entries), size, new_size)
