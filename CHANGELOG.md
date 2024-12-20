@@ -1,5 +1,9 @@
 # Changelog
 
+## v1.0.2
+
+  * The changes in v1.0.1 introduced some subtle compression errors with HPACK encoding. This has been fixed in this version. See [this issue](https://github.com/elixir-mint/hpax/issues/20) for more details.
+
 ## v1.0.1
 
   * Fix some issues with dynamic table resizing. You should not need to do anything to your code, it should Just Work™. If you want to read more, [this issue](https://github.com/elixir-mint/hpax/issues/18) has all the context.
