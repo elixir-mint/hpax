@@ -271,15 +271,8 @@ defmodule HPAX.Table do
         current -> min(current, new_protocol_max_table_size)
       end
 
-    table =
-      if new_protocol_max_table_size < table.size do
-        evict_to_size(table, new_protocol_max_table_size)
-      else
-        table
-      end
-
     %__MODULE__{
-      table
+      evict_to_size(table, new_protocol_max_table_size)
       | protocol_max_table_size: new_protocol_max_table_size,
         max_table_size: new_protocol_max_table_size,
         pending_minimum_resize: pending_minimum_resize

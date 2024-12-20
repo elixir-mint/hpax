@@ -70,7 +70,7 @@ defmodule HPAX.TableTest do
     end
   end
 
-  describe "resize/2" do
+  describe "resizing" do
     test "increasing the protocol max table size" do
       table = Table.new(4096, :never)
       table = Table.add(table, "aaaa", "AAAA")
@@ -100,7 +100,7 @@ defmodule HPAX.TableTest do
     end
   end
 
-  describe "dynamic_resize/2" do
+  describe "dynamically resizing" do
     test "decreasing the max table size but above table size" do
       table = Table.new(4096, :never)
       table = Table.add(table, "aaaa", "AAAA")
