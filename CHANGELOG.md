@@ -1,5 +1,9 @@
 # Changelog
 
+## v1.0.3
+
+  * Silence warnings on (upcoming, at this time) Elixir 1.19+.
+
 ## v1.0.2
 
   * The changes in v1.0.1 introduced some subtle compression errors with HPACK encoding. This has been fixed in this version. See [this issue](https://github.com/elixir-mint/hpax/issues/20) for more details.
