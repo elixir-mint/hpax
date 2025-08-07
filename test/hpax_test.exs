@@ -95,6 +95,22 @@ defmodule HPAXTest do
     assert dec_table.entries == [{"b", "B"}, {"a", "A"}]
   end
 
+  test "encode/3 with invalid headers" do
+    table = HPAX.new(1000)
+
+    assert_raise ArgumentError,
+                 ~s(expected header name/value to be strings, got: :foo/"bar"),
+                 fn ->
+                   HPAX.encode([{:store, :foo, "bar"}], table)
+                 end
+
+    assert_raise ArgumentError,
+                 ~s(expected header name/value to be strings, got: "foo"/:bar),
+                 fn ->
+                   HPAX.encode([{:store, "foo", :bar}], table)
+                 end
+  end
+
   property "encode/3 with a single action" do
     table = HPAX.new(500)
 
