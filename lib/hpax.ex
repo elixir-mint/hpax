@@ -298,7 +298,8 @@ defmodule HPAX do
   end
 
   defp encode_headers([{action, name, value} | rest], table, acc)
-       when action in @valid_header_actions and is_binary(name) and is_binary(value) do
+       when action in @valid_header_actions do
+    validate_header(name, value)
     huffman? = table.huffman_encoding == :always
 
     {encoded, table} =
@@ -328,6 +329,15 @@ defmodule HPAX do
       end
 
     encode_headers(rest, table, [acc, encoded])
+  end
+
+  defp validate_header(name, value) when is_binary(name) and is_binary(value) do
+    :ok
+  end
+
+  defp validate_header(name, value) do
+    raise ArgumentError,
+          "expected header name/value to be strings, got: #{inspect(name)}/#{inspect(value)}"
   end
 
   defp encode_indexed_header(index) do
