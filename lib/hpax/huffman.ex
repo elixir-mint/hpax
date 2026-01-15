@@ -76,7 +76,7 @@ defmodule HPAX.Huffman do
   # Use binary syntax for single match context optimization.
   def decode(<<padding::bitstring>>) when bit_size(padding) in 1..7 do
     padding_size = bit_size(padding)
-    <<padding::size(padding_size)>> = padding
+    <<padding::size(^padding_size)>> = padding
 
     if take_significant_bits(unquote(eos_bits), unquote(eos_bit_count), padding_size) == padding do
       <<>>
