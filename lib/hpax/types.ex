@@ -47,7 +47,7 @@ defmodule HPAX.Types do
 
   @spec decode_integer(bitstring, 1..8) :: {:ok, non_neg_integer(), binary()} | :error
   def decode_integer(bitstring, prefix) when is_bitstring(bitstring) and prefix in 1..8 do
-    with <<value::size(prefix), rest::binary>> <- bitstring do
+    with <<value::size(^prefix), rest::binary>> <- bitstring do
       if value < power_of_two(prefix) - 1 do
         {:ok, value, rest}
       else
@@ -74,7 +74,7 @@ defmodule HPAX.Types do
   def decode_binary(binary) when is_binary(binary) do
     with <<huffman_bit::1, rest::bitstring>> <- binary,
          {:ok, length, rest} <- decode_integer(rest, 7),
-         <<contents::binary-size(length), rest::binary>> <- rest do
+         <<contents::binary-size(^length), rest::binary>> <- rest do
       contents =
         case huffman_bit do
           0 -> contents

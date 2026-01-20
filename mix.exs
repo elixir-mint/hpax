@@ -8,7 +8,7 @@ defmodule HPAX.MixProject do
     [
       app: :hpax,
       version: @version,
-      elixir: "~> 1.12",
+      elixir: "~> 1.15",
       start_permanent: Mix.env() == :prod,
       deps: deps(),
 

@@ -19,9 +19,9 @@ jobs:
             lint: true
             coverage: true
             os: ubuntu-latest
-          - erlang: "23"
-            elixir: "1.12"
-            os: ubuntu-20.04
+          - erlang: "24"
+            elixir: "1.15"
+            os: ubuntu-22.04
 
     env:
       MIX_ENV: test
