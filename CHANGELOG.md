@@ -1,5 +1,9 @@
 # Changelog
 
+## v1.0.4
+
+  * Address `CVE-2026-58226`—cap any HPACK variable-length unbounded integers. See also GitHub advisory [GHSA-jj2p-32j7-whj2](https://github.com/elixir-mint/hpax/security/advisories/GHSA-jj2p-32j7-whj2).
+
 ## v1.0.3
 
   * Silence warnings on (upcoming, at this time) Elixir 1.19+.
