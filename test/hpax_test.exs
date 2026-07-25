@@ -60,6 +60,17 @@ defmodule HPAXTest do
     assert IO.iodata_to_binary(encoded) == expected
   end
 
+  test "encode/2 emits a compact indexed reference for a header whose value matches a static entry with no defined default value" do
+    table = HPAX.new(1000, huffman_encoding: :never)
+
+    # Index 58 is "user-agent" (RFC 7541, Appendix A), which has no defined default value in
+    # the static table. Encoding it with a literal "" value should still find a full match
+    # there and produce a single indexed-header-field byte (section 6.1), rather than falling
+    # back to a longer literal representation.
+    assert {encoded, %HPAX.Table{}} = HPAX.encode([{:store, "user-agent", ""}], table)
+    assert IO.iodata_to_binary(encoded) == <<0xBA>>
+  end
+
   # https://http2.github.io/http2-spec/compression.html#rfc.section.C.4.1
   test "encode/2 with a Huffman example from the spec" do
     table = HPAX.new(1000, huffman_encoding: :always)
