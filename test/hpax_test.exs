@@ -29,6 +29,17 @@ defmodule HPAXTest do
     assert headers == [{"custom-key", "custom-header"}]
   end
 
+  test "decode/2 of a fully-indexed reference to a static entry with no defined value returns an empty binary, not nil" do
+    table = HPAX.new(1000)
+
+    # Index 58 is "user-agent" (RFC 7541, Appendix A), which has no defined default value.
+    # A peer is allowed to reference it via a plain Indexed Header Field Representation
+    # (section 6.1); the decoded value must be a binary per this module's documented contract,
+    # not the atom `nil`.
+    assert {:ok, [{"user-agent", value}], %HPAX.Table{}} = HPAX.decode(<<0xBA>>, table)
+    assert value == ""
+  end
+
   # https://http2.github.io/http2-spec/compression.html#rfc.section.C.3.1
   test "encode/2 with a literal example from the spec" do
     table = HPAX.new(1000, huffman_encoding: :never)
@@ -289,7 +300,7 @@ defmodule HPAXTest do
   defp header() do
     header_from_static_table =
       bind(member_of(HPAX.Table.__static_table__()), fn
-        {name, nil} -> {constant(name), binary()}
+        {name, ""} -> {constant(name), binary()}
         {name, value} -> constant({name, value})
       end)
 
