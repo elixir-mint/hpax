@@ -85,6 +85,14 @@ defmodule HPAX.Huffman do
     end
   end
 
+  # Anything left over here is 8 or more bits that don't match any Huffman code (the clauses
+  # above only match a complete code, the empty binary, or up to 7 bits of valid EOS padding).
+  # This can only happen with a malformed/malicious encoding, since a real encoder never
+  # produces output with more than 7 trailing bits that aren't a complete code.
+  def decode(<<_rest::bitstring>>) do
+    throw({:hpax, {:protocol_error, :invalid_huffman_encoding}})
+  end
+
   ## Helpers
 
   @compile {:inline, take_significant_bits: 3}
