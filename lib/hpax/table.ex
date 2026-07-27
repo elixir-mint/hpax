@@ -25,7 +25,7 @@ defmodule HPAX.Table do
         }
 
   @static_table [
-    {":authority", nil},
+    {":authority", ""},
     {":method", "GET"},
     {":method", "POST"},
     {":path", "/"},
@@ -39,53 +39,53 @@ defmodule HPAX.Table do
     {":status", "400"},
     {":status", "404"},
     {":status", "500"},
-    {"accept-charset", nil},
+    {"accept-charset", ""},
     {"accept-encoding", "gzip, deflate"},
-    {"accept-language", nil},
-    {"accept-ranges", nil},
-    {"accept", nil},
-    {"access-control-allow-origin", nil},
-    {"age", nil},
-    {"allow", nil},
-    {"authorization", nil},
-    {"cache-control", nil},
-    {"content-disposition", nil},
-    {"content-encoding", nil},
-    {"content-language", nil},
-    {"content-length", nil},
-    {"content-location", nil},
-    {"content-range", nil},
-    {"content-type", nil},
-    {"cookie", nil},
-    {"date", nil},
-    {"etag", nil},
-    {"expect", nil},
-    {"expires", nil},
-    {"from", nil},
-    {"host", nil},
-    {"if-match", nil},
-    {"if-modified-since", nil},
-    {"if-none-match", nil},
-    {"if-range", nil},
-    {"if-unmodified-since", nil},
-    {"last-modified", nil},
-    {"link", nil},
-    {"location", nil},
-    {"max-forwards", nil},
-    {"proxy-authenticate", nil},
-    {"proxy-authorization", nil},
-    {"range", nil},
-    {"referer", nil},
-    {"refresh", nil},
-    {"retry-after", nil},
-    {"server", nil},
-    {"set-cookie", nil},
-    {"strict-transport-security", nil},
-    {"transfer-encoding", nil},
-    {"user-agent", nil},
-    {"vary", nil},
-    {"via", nil},
-    {"www-authenticate", nil}
+    {"accept-language", ""},
+    {"accept-ranges", ""},
+    {"accept", ""},
+    {"access-control-allow-origin", ""},
+    {"age", ""},
+    {"allow", ""},
+    {"authorization", ""},
+    {"cache-control", ""},
+    {"content-disposition", ""},
+    {"content-encoding", ""},
+    {"content-language", ""},
+    {"content-length", ""},
+    {"content-location", ""},
+    {"content-range", ""},
+    {"content-type", ""},
+    {"cookie", ""},
+    {"date", ""},
+    {"etag", ""},
+    {"expect", ""},
+    {"expires", ""},
+    {"from", ""},
+    {"host", ""},
+    {"if-match", ""},
+    {"if-modified-since", ""},
+    {"if-none-match", ""},
+    {"if-range", ""},
+    {"if-unmodified-since", ""},
+    {"last-modified", ""},
+    {"link", ""},
+    {"location", ""},
+    {"max-forwards", ""},
+    {"proxy-authenticate", ""},
+    {"proxy-authorization", ""},
+    {"range", ""},
+    {"referer", ""},
+    {"refresh", ""},
+    {"retry-after", ""},
+    {"server", ""},
+    {"set-cookie", ""},
+    {"strict-transport-security", ""},
+    {"transfer-encoding", ""},
+    {"user-agent", ""},
+    {"vary", ""},
+    {"via", ""},
+    {"www-authenticate", ""}
   ]
 
   @static_table_size length(@static_table)
@@ -149,10 +149,10 @@ defmodule HPAX.Table do
   Looks up a header by index `index` in the given `table`.
 
   Returns `{:ok, {name, value}}` if a header is found at the given `index`, otherwise returns
-  `:error`. `value` can be a binary in case both the header name and value are present in the
-  table, or `nil` if only the name is present (this can only happen in the static table).
+  `:error`. Some static table entries (see RFC 7541, Appendix A) have no defined value; `value`
+  is the empty binary `""` for those.
   """
-  @spec lookup_by_index(t(), pos_integer()) :: {:ok, {binary(), binary() | nil}} | :error
+  @spec lookup_by_index(t(), pos_integer()) :: {:ok, {binary(), binary()}} | :error
   def lookup_by_index(table, index)
 
   # Static table
@@ -190,7 +190,7 @@ defmodule HPAX.Table do
   > header field names MUST be converted to lowercase prior to their encoding in HTTP/2
 
   """
-  @spec lookup_by_header(t(), binary(), binary() | nil) ::
+  @spec lookup_by_header(t(), binary(), binary()) ::
           {:full, pos_integer()} | {:name, pos_integer()} | :not_found
   def lookup_by_header(table, name, value)
 

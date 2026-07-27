@@ -13,17 +13,20 @@ defmodule HPAX.TableTest do
 
     # These are in the static table.
     assert {:full, _} = Table.lookup_by_header(table, ":status", "200")
-    assert {:name, _} = Table.lookup_by_header(table, ":authority", nil)
+    # :authority has no defined value in the static table (RFC 7541, Appendix A), which is
+    # represented as the empty binary, so it's a full match against "" and a name-only match
+    # against anything else.
+    assert {:full, _} = Table.lookup_by_header(table, ":authority", "")
     assert {:name, _} = Table.lookup_by_header(table, ":authority", "https://example.com")
 
-    assert Table.lookup_by_header(table, "my-nonexistent-header", nil) == :not_found
+    assert Table.lookup_by_header(table, "my-nonexistent-header", "") == :not_found
     assert Table.lookup_by_header(table, "my-nonexistent-header", "my-value") == :not_found
 
     table = Table.add(table, ":my-header", "my-value")
 
     assert {:full, _} = Table.lookup_by_header(table, ":my-header", "my-value")
     assert {:name, _} = Table.lookup_by_header(table, ":my-header", "other-value")
-    assert {:name, _} = Table.lookup_by_header(table, ":my-header", nil)
+    assert {:name, _} = Table.lookup_by_header(table, ":my-header", "")
   end
 
   test "LRU eviction" do
@@ -50,7 +53,7 @@ defmodule HPAX.TableTest do
     end
 
     test "with an index in the static table" do
-      assert Table.lookup_by_index(Table.new(100, :never), 1) == {:ok, {":authority", nil}}
+      assert Table.lookup_by_index(Table.new(100, :never), 1) == {:ok, {":authority", ""}}
     end
 
     test "with an index in the dynamic table" do
