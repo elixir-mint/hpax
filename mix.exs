@@ -36,7 +36,7 @@ defmodule HPAX.MixProject do
 
   defp deps do
     [
-      {:ex_doc, "~> 0.34", only: :dev},
+      {:ex_doc, "~> 0.40", only: :dev},
       {:hpack, ">= 0.0.0", hex: :hpack_erl, only: :test},
       {:stream_data, "~> 1.0", only: [:dev, :test]},
       {:dialyxir, "~> 1.0", only: [:dev, :test], runtime: false},
