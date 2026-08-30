@@ -61,25 +61,27 @@ defmodule HPAX.Huffman do
   ## Decoding
 
   @spec decode(binary()) :: binary()
-  def decode(binary)
+  def decode(binary) when is_bitstring(binary) do
+    decode(binary, <<>>)
+  end
 
   for {byte_value, bits, bit_count} <- regular_entries do
-    def decode(<<unquote(bits)::size(unquote(bit_count)), rest::bitstring>>) do
-      <<unquote(byte_value), decode(rest)::binary>>
+    defp decode(<<unquote(bits)::size(unquote(bit_count)), rest::bitstring>>, acc) do
+      decode(rest, <<acc::binary, unquote(byte_value)>>)
     end
   end
 
-  def decode(<<>>) do
-    <<>>
+  defp decode(<<>>, acc) do
+    acc
   end
 
   # Use binary syntax for single match context optimization.
-  def decode(<<padding::bitstring>>) when bit_size(padding) in 1..7 do
+  defp decode(<<padding::bitstring>>, acc) when bit_size(padding) in 1..7 do
     padding_size = bit_size(padding)
     <<padding::size(^padding_size)>> = padding
 
     if take_significant_bits(unquote(eos_bits), unquote(eos_bit_count), padding_size) == padding do
-      <<>>
+      acc
     else
       throw({:hpax, {:protocol_error, :invalid_huffman_encoding}})
     end
@@ -89,7 +91,7 @@ defmodule HPAX.Huffman do
   # above only match a complete code, the empty binary, or up to 7 bits of valid EOS padding).
   # This can only happen with a malformed/malicious encoding, since a real encoder never
   # produces output with more than 7 trailing bits that aren't a complete code.
-  def decode(<<_rest::bitstring>>) do
+  defp decode(<<_rest::bitstring>>, _acc) do
     throw({:hpax, {:protocol_error, :invalid_huffman_encoding}})
   end
 
