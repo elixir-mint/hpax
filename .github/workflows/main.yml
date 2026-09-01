@@ -14,8 +14,8 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - erlang: "27.2"
-            elixir: "1.18"
+          - erlang: "29.0"
+            elixir: "1.20"
             lint: true
             coverage: true
             os: ubuntu-latest
