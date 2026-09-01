@@ -89,6 +89,7 @@ defmodule HPAX.Table do
   ]
 
   @static_table_size length(@static_table)
+  @static_table_by_index @static_table |> Enum.map(&{:ok, &1}) |> List.to_tuple()
   @dynamic_table_start @static_table_size + 1
 
   @doc """
@@ -155,23 +156,22 @@ defmodule HPAX.Table do
   @spec lookup_by_index(t(), pos_integer()) :: {:ok, {binary(), binary()}} | :error
   def lookup_by_index(table, index)
 
-  # Static table
-  for {header, index} <- Enum.with_index(@static_table, 1) do
-    def lookup_by_index(%__MODULE__{}, unquote(index)), do: {:ok, unquote(header)}
-  end
-
-  def lookup_by_index(%__MODULE__{length: 0}, _index) do
-    :error
+  def lookup_by_index(%__MODULE__{}, index) when index in 1..@static_table_size do
+    elem(@static_table_by_index, index - 1)
   end
 
   def lookup_by_index(%__MODULE__{entries: entries, length: length}, index)
       when index >= @dynamic_table_start and index <= @dynamic_table_start + length - 1 do
-    {:ok, Enum.at(entries, index - @dynamic_table_start)}
+    {:ok, get_dynamic_entry(entries, index - @dynamic_table_start)}
   end
 
   def lookup_by_index(%__MODULE__{}, _index) do
     :error
   end
+
+  @compile {:inline, get_dynamic_entry: 2}
+  defp get_dynamic_entry([entry | _], 0), do: entry
+  defp get_dynamic_entry([_ | rest], n), do: get_dynamic_entry(rest, n - 1)
 
   @doc """
   Looks up the index of a header by its name and value.
