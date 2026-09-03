@@ -53,15 +53,28 @@ defmodule HPAX.TableTest do
     end
 
     test "with an index in the static table" do
-      assert Table.lookup_by_index(Table.new(100, :never), 1) == {:ok, {":authority", ""}}
+      table = Table.new(100, :never)
+
+      for {header, index} <- Enum.with_index(Table.__static_table__(), 1) do
+        assert Table.lookup_by_index(table, index) == {:ok, header}
+      end
     end
 
-    test "with an index in the dynamic table" do
-      table = Table.new(100, :never)
-      table = Table.add(table, "my-header", "my-value")
+    test "with shallow and deep indices in the dynamic table" do
+      dynamic_table_start = length(Table.__static_table__()) + 1
 
-      assert Table.lookup_by_index(table, length(Table.__static_table__()) + 1) ==
-               {:ok, {"my-header", "my-value"}}
+      table =
+        Enum.reduce(1..64, Table.new(10_000, :never), fn index, table ->
+          Table.add(table, "header-#{index}", "value-#{index}")
+        end)
+
+      assert Table.lookup_by_index(table, dynamic_table_start) ==
+               {:ok, {"header-64", "value-64"}}
+
+      assert Table.lookup_by_index(table, dynamic_table_start + 63) ==
+               {:ok, {"header-1", "value-1"}}
+
+      assert Table.lookup_by_index(table, dynamic_table_start + 64) == :error
     end
   end
 
