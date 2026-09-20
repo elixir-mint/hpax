@@ -259,6 +259,102 @@ defmodule HPAXTest do
     end
   end
 
+  describe "protocol_resize/2" do
+    # ":status: 404" stored with incremental indexing, 42 bytes in the dynamic table.
+    @store_404 <<0x48, 3, "404">>
+    # ":status: 500" stored the same way.
+    @store_500 <<0x48, 3, "500">>
+    # Indexed references to the first and second entries of the dynamic table.
+    @indexed_62 <<0xBE>>
+    @indexed_63 <<0xBF>>
+    # Indexed reference to ":status: 200" in the static table.
+    @indexed_200 <<0x88>>
+
+    test "raising the maximum leaves the size of the table to the encoder" do
+      table = HPAX.new(4096)
+
+      # The encoder picks a 64 byte table, which fits one of the entries below.
+      assert {:ok, [{":status", "404"}], table} =
+               HPAX.decode(size_update(64) <> @store_404, table)
+
+      table = HPAX.protocol_resize(table, 8192)
+      assert table.max_table_size == 64
+
+      # The encoder didn't ask for more room, so storing the second entry evicts the first.
+      assert {:ok, [{":status", "500"}], table} = HPAX.decode(@store_500, table)
+      assert {:ok, [{":status", "500"}], table} = HPAX.decode(@indexed_62, table)
+      assert {:error, {:index_not_found, 63}} = HPAX.decode(@indexed_63, table)
+    end
+
+    test "lowering the maximum evicts entries and requires a size update" do
+      assert {:ok, _headers, table} = HPAX.decode(@store_404, HPAX.new(4096))
+      assert table.size == 42
+
+      table = HPAX.protocol_resize(table, 0)
+      assert table.max_table_size == 0
+      assert table.size == 0
+
+      assert {:error, :missing_size_update} = HPAX.decode(@indexed_200, table)
+      assert {:error, :missing_size_update} = HPAX.decode(<<>>, table)
+
+      assert {:ok, [{":status", "200"}], table} =
+               HPAX.decode(size_update(0) <> @indexed_200, table)
+
+      assert {:ok, [{":status", "200"}], _table} = HPAX.decode(@indexed_200, table)
+    end
+
+    test "a size update is required even when the entries fit the new maximum" do
+      assert {:ok, _headers, table} = HPAX.decode(@store_404, HPAX.new(4096))
+
+      table = HPAX.protocol_resize(table, 100)
+      assert table.max_table_size == 100
+      assert table.size == 42
+
+      assert {:error, :missing_size_update} = HPAX.decode(@indexed_200, table)
+
+      assert {:ok, [{":status", "200"}], _table} =
+               HPAX.decode(size_update(100) <> @indexed_200, table)
+    end
+
+    test "no size update is required while the encoder stays below the new maximum" do
+      assert {:ok, _headers, table} = HPAX.decode(size_update(64) <> @store_404, HPAX.new(4096))
+
+      table = HPAX.protocol_resize(table, 100)
+      assert table.max_table_size == 64
+
+      assert {:ok, [{":status", "200"}], _table} = HPAX.decode(@indexed_200, table)
+    end
+
+    test "the smallest maximum has to be signalled when it changes more than once" do
+      assert {:ok, _headers, table} = HPAX.decode(@store_404, HPAX.new(4096))
+
+      table =
+        table
+        |> HPAX.protocol_resize(40)
+        |> HPAX.protocol_resize(0)
+        |> HPAX.protocol_resize(4096)
+
+      assert {:error, :missing_size_update} =
+               HPAX.decode(size_update(40) <> @indexed_200, table)
+
+      assert {:ok, [{":status", "200"}], table} =
+               HPAX.decode(size_update(0) <> size_update(4096) <> @indexed_200, table)
+
+      assert table.max_table_size == 4096
+    end
+
+    test "a size update above the maximum is rejected" do
+      table = HPAX.protocol_resize(HPAX.new(4096), 100)
+
+      assert {:error, :protocol_error} = HPAX.decode(size_update(101), table)
+      assert {:ok, [], _table} = HPAX.decode(size_update(100), table)
+    end
+
+    defp size_update(size) do
+      <<0b001::3, HPAX.Types.encode_integer(size, 5)::bitstring>>
+    end
+  end
+
   property "encoding then decoding headers is circular" do
     table = HPAX.new(500)
 
