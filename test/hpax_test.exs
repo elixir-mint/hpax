@@ -355,6 +355,15 @@ defmodule HPAXTest do
     end
   end
 
+  describe "decode/2 of a dynamic table size update" do
+    test "returns an error for an integer that never ends" do
+      assert {:error, :bad_integer_encoding} = HPAX.decode(<<0x3F>>, HPAX.new(4096))
+
+      assert {:error, :bad_integer_encoding} =
+               HPAX.decode(<<0x20, 0x3F>>, HPAX.new(4096))
+    end
+  end
+
   property "encoding then decoding headers is circular" do
     table = HPAX.new(500)
 

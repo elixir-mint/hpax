@@ -176,6 +176,8 @@ defmodule HPAX do
         table = %{table | required_minimum_resize: nil}
         decode(rest, Table.dynamic_resize(table, new_max_size))
     end
+  catch
+    :throw, {:hpax, error} -> {:error, error}
   end
 
   # A reduction of the maximum size below the size of the table has to be acknowledged with a
