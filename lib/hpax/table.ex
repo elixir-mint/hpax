@@ -9,7 +9,8 @@ defmodule HPAX.Table do
     entries: [],
     size: 0,
     length: 0,
-    pending_minimum_resize: nil
+    pending_minimum_resize: nil,
+    required_minimum_resize: nil
   ]
 
   @type huffman_encoding() :: :always | :never
@@ -21,7 +22,8 @@ defmodule HPAX.Table do
           entries: [{binary(), binary()}],
           size: non_neg_integer(),
           length: non_neg_integer(),
-          pending_minimum_resize: non_neg_integer() | nil
+          pending_minimum_resize: non_neg_integer() | nil,
+          required_minimum_resize: non_neg_integer() | nil
         }
 
   @static_table [
@@ -277,6 +279,36 @@ defmodule HPAX.Table do
         max_table_size: new_protocol_max_table_size,
         pending_minimum_resize: pending_minimum_resize
     }
+  end
+
+  @doc """
+  Changes the maximum size the peer's encoder is permitted to use for this decoding table.
+
+  The table's own maximum size is chosen by that encoder and signalled with dynamic table size
+  update instructions, so it only follows the protocol maximum down. When the new protocol
+  maximum is below the maximum the encoder declared, entries are evicted to fit it and the
+  encoder is required to start its next block with a dynamic table size update of at most that
+  size, per RFC7541§4.2. `required_minimum_resize` holds the smallest such size until the update
+  arrives, since that is the one the encoder has to signal.
+  """
+  @spec protocol_resize(t(), non_neg_integer()) :: t()
+  def protocol_resize(%__MODULE__{} = table, new_protocol_max_table_size) do
+    table = %{table | protocol_max_table_size: new_protocol_max_table_size}
+
+    if new_protocol_max_table_size < table.max_table_size do
+      required_minimum_resize =
+        case table.required_minimum_resize do
+          nil -> new_protocol_max_table_size
+          current -> min(current, new_protocol_max_table_size)
+        end
+
+      %{
+        dynamic_resize(table, new_protocol_max_table_size)
+        | required_minimum_resize: required_minimum_resize
+      }
+    else
+      table
+    end
   end
 
   def dynamic_resize(%__MODULE__{} = table, new_max_table_size) do
