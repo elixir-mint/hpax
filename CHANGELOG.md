@@ -1,5 +1,12 @@
 # Changelog
 
+## v1.1.0
+
+  * Add `HPAX.protocol_resize/2`, to use instead of `HPAX.resize/2` when the maximum size of a decoding table changes. After a reduction, `HPAX.decode/2` requires the next block to start with a dynamic table size update, as RFC 9113 requires.
+  * Return an error from `HPAX.decode/2` for malformed Huffman-coded strings and dynamic table size updates instead of raising or throwing.
+  * Decode static table entries with no defined value, such as `:authority`, as an empty binary instead of `nil`.
+  * Speed up Huffman decoding and table index lookups.
+
 ## v1.0.4
 
   * Address `CVE-2026-58226`—cap any HPACK variable-length unbounded integers. See also GitHub advisory [GHSA-jj2p-32j7-whj2](https://github.com/elixir-mint/hpax/security/advisories/GHSA-jj2p-32j7-whj2).

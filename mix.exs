@@ -1,7 +1,7 @@
 defmodule HPAX.MixProject do
   use Mix.Project
 
-  @version "1.0.4"
+  @version "1.1.0"
   @repo_url "https://github.com/elixir-mint/hpax"
 
   def project do
